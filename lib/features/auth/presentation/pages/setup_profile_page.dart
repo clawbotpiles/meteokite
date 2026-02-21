@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:meteokite/app/router/app_routes.dart';
 import 'package:meteokite/core/theme/app_spacing.dart';
 import 'package:meteokite/features/auth/presentation/providers/auth_session_provider.dart';
+import 'package:meteokite/features/profile/presentation/providers/gear_items_provider.dart';
 import 'package:meteokite/shared/constants/disciplines.dart';
+import 'package:meteokite/shared/constants/gear_presets.dart';
 
 class SetupProfilePage extends ConsumerStatefulWidget {
   const SetupProfilePage({super.key});
@@ -17,6 +19,7 @@ class _SetupProfilePageState extends ConsumerState<SetupProfilePage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   String? _selectedDiscipline;
+  bool _seedInitialGear = true;
 
   @override
   void dispose() {
@@ -94,6 +97,22 @@ class _SetupProfilePageState extends ConsumerState<SetupProfilePage> {
                           return null;
                         },
                       ),
+                      const SizedBox(height: AppSpacing.sm),
+                      SwitchListTile.adaptive(
+                        contentPadding: EdgeInsets.zero,
+                        value: _seedInitialGear,
+                        onChanged: (value) {
+                          setState(() {
+                            _seedInitialGear = value;
+                          });
+                        },
+                        title: const Text(
+                          'Crear equipamiento inicial sugerido',
+                        ),
+                        subtitle: const Text(
+                          'Genera una base segun la disciplina para empezar mas rapido.',
+                        ),
+                      ),
                       const SizedBox(height: AppSpacing.lg),
                       SizedBox(
                         width: double.infinity,
@@ -116,6 +135,30 @@ class _SetupProfilePageState extends ConsumerState<SetupProfilePage> {
                                         preferredDiscipline:
                                             _selectedDiscipline!,
                                       );
+
+                                  if (_seedInitialGear) {
+                                    final presets =
+                                        DisciplineGearPresets.forDiscipline(
+                                          _selectedDiscipline!,
+                                        );
+                                    final gearActions = ref.read(
+                                      gearItemsActionsProvider,
+                                    );
+                                    int? firstGearId;
+                                    for (final preset in presets) {
+                                      final itemId = await gearActions.add(
+                                        name: preset.name,
+                                        type: preset.type,
+                                        size: preset.size,
+                                        notes: preset.notes,
+                                      );
+                                      firstGearId ??= itemId;
+                                    }
+
+                                    if (firstGearId != null) {
+                                      await gearActions.setPrimary(firstGearId);
+                                    }
+                                  }
 
                                   if (!context.mounted) {
                                     return;

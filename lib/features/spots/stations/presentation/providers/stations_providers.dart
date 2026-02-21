@@ -62,6 +62,63 @@ final stationHistoryProvider = FutureProvider<List<StationReading>>((
   return db.getRecentStationReadings(station.id, limit: 12);
 });
 
+class StationHistorySummary {
+  const StationHistorySummary({
+    required this.avgSpeedKn,
+    required this.maxSpeedKn,
+    required this.minSpeedKn,
+    required this.latestSpeedKn,
+    required this.trendDeltaKn,
+  });
+
+  final double avgSpeedKn;
+  final double maxSpeedKn;
+  final double minSpeedKn;
+  final double latestSpeedKn;
+  final double trendDeltaKn;
+}
+
+final stationHistorySummaryProvider =
+    Provider<AsyncValue<StationHistorySummary>>((ref) {
+      final historyState = ref.watch(stationHistoryProvider);
+
+      return historyState.whenData((history) {
+        if (history.isEmpty) {
+          return const StationHistorySummary(
+            avgSpeedKn: 0,
+            maxSpeedKn: 0,
+            minSpeedKn: 0,
+            latestSpeedKn: 0,
+            trendDeltaKn: 0,
+          );
+        }
+
+        var sum = 0.0;
+        var max = history.first.speedKn;
+        var min = history.first.speedKn;
+        for (final item in history) {
+          sum += item.speedKn;
+          if (item.speedKn > max) {
+            max = item.speedKn;
+          }
+          if (item.speedKn < min) {
+            min = item.speedKn;
+          }
+        }
+
+        final latest = history.first.speedKn;
+        final oldest = history.last.speedKn;
+
+        return StationHistorySummary(
+          avgSpeedKn: sum / history.length,
+          maxSpeedKn: max,
+          minSpeedKn: min,
+          latestSpeedKn: latest,
+          trendDeltaKn: latest - oldest,
+        );
+      });
+    });
+
 final stationsActionsProvider = Provider<StationsActions>((ref) {
   final db = ref.watch(localDatabaseProvider);
   return StationsActions(db);

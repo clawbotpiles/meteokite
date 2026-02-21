@@ -17,4 +17,14 @@ class EnvConfig {
     'AEMET_API_KEY',
     defaultValue: '',
   );
+
+  static const googleAuthEnabled = bool.fromEnvironment(
+    'GOOGLE_AUTH_ENABLED',
+    defaultValue: false,
+  );
+
+  static const appleAuthEnabled = bool.fromEnvironment(
+    'APPLE_AUTH_ENABLED',
+    defaultValue: false,
+  );
 }

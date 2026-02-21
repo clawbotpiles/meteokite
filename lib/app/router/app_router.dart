@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:meteokite/app/navigation/main_shell_page.dart';
 import 'package:meteokite/app/router/app_routes.dart';
 import 'package:meteokite/features/auth/presentation/pages/login_page.dart';
 import 'package:meteokite/features/auth/presentation/pages/setup_profile_page.dart';
 import 'package:meteokite/features/auth/presentation/providers/auth_session_provider.dart';
 import 'package:meteokite/features/dashboard/presentation/pages/dashboard_page.dart';
 import 'package:meteokite/features/profile/presentation/pages/profile_page.dart';
+import 'package:meteokite/features/sessions/presentation/pages/record_page.dart';
 import 'package:meteokite/features/sessions/presentation/pages/sessions_page.dart';
+import 'package:meteokite/features/spots/presentation/pages/spots_page.dart';
 import 'package:meteokite/features/spots/social/presentation/pages/social_page.dart';
 import 'package:meteokite/features/spots/stations/presentation/pages/stations_page.dart';
 import 'package:meteokite/features/spots/weather/presentation/pages/weather_page.dart';
@@ -60,10 +63,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(
-        path: AppRoutes.dashboard,
-        builder: (context, state) => const DashboardPage(),
-      ),
-      GoRoute(
         path: AppRoutes.authLogin,
         builder: (context, state) => const LoginPage(),
       ),
@@ -71,25 +70,64 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.authSetupProfile,
         builder: (context, state) => const SetupProfilePage(),
       ),
-      GoRoute(
-        path: AppRoutes.profileHome,
-        builder: (context, state) => const ProfilePage(),
-      ),
-      GoRoute(
-        path: AppRoutes.sessionsHome,
-        builder: (context, state) => const SessionsPage(),
-      ),
-      GoRoute(
-        path: AppRoutes.spotsWeather,
-        builder: (context, state) => const WeatherPage(),
-      ),
-      GoRoute(
-        path: AppRoutes.spotsStations,
-        builder: (context, state) => const StationsPage(),
-      ),
-      GoRoute(
-        path: AppRoutes.spotsSocial,
-        builder: (context, state) => const SocialPage(),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) {
+          return MainShellPage(navigationShell: navigationShell);
+        },
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.dashboard,
+                builder: (context, state) => const DashboardPage(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.spotsHome,
+                builder: (context, state) => const SpotsPage(),
+                routes: [
+                  GoRoute(
+                    path: 'weather',
+                    builder: (context, state) => const WeatherPage(),
+                  ),
+                  GoRoute(
+                    path: 'stations',
+                    builder: (context, state) => const StationsPage(),
+                  ),
+                  GoRoute(
+                    path: 'social',
+                    builder: (context, state) => const SocialPage(),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.recordHome,
+                builder: (context, state) => const RecordPage(),
+                routes: [
+                  GoRoute(
+                    path: 'sessions',
+                    builder: (context, state) => const SessionsPage(),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.profileHome,
+                builder: (context, state) => const ProfilePage(),
+              ),
+            ],
+          ),
+        ],
       ),
     ],
   );

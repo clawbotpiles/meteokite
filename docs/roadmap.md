@@ -31,6 +31,9 @@ Goal: usable app without backend.
 - rankings
 - social real sync
 - push notifications
+- external device integration (WOO / watch / fit-gpx import)
+  - import external recorded sessions into local model
+  - provider connectors and mapping pipeline (WOO, Garmin/Apple Health where available)
 
 ## Phase 3 - Competitive system
 

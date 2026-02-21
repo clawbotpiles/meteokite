@@ -5,18 +5,34 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:meteokite/app/app.dart';
+import 'package:meteokite/features/spots/weather/domain/entities/wind_snapshot.dart';
+import 'package:meteokite/features/spots/weather/presentation/providers/weather_providers.dart';
 
 void main() {
   testWidgets('renders MeteoKite dashboard', (WidgetTester tester) async {
-    await tester.pumpWidget(const ProviderScope(child: MeteoKiteApp()));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          currentWindProvider.overrideWith(
+            (ref) async => WindSnapshot(
+              speedKn: 18,
+              gustKn: 22,
+              directionDeg: 245,
+              timestamp: DateTime.now().toUtc(),
+              source: 'test',
+            ),
+          ),
+        ],
+        child: const MeteoKiteApp(),
+      ),
+    );
 
     expect(find.text('MeteoKite'), findsOneWidget);
-    expect(find.text('Viento'), findsOneWidget);
-    expect(find.byIcon(Icons.waves), findsOneWidget);
+    expect(find.text('Semaforo de navegabilidad'), findsOneWidget);
+    expect(find.text('Estado del sistema'), findsOneWidget);
   });
 }

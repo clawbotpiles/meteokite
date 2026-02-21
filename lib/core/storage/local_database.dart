@@ -100,6 +100,95 @@ class RideSessions extends Table {
   RealColumn get avgSpeedKn => real()();
 
   RealColumn get maxSpeedKn => real()();
+
+  IntColumn get gearItemId => integer().nullable()();
+
+  TextColumn get gearLabel => text().nullable()();
+}
+
+class WeatherSnapshots extends Table {
+  IntColumn get id => integer().autoIncrement()();
+
+  TextColumn get spotKey => text().unique()();
+
+  RealColumn get latitude => real()();
+
+  RealColumn get longitude => real()();
+
+  DateTimeColumn get timestamp => dateTime()();
+
+  RealColumn get speedKn => real()();
+
+  RealColumn get gustKn => real()();
+
+  IntColumn get directionDeg => integer()();
+
+  TextColumn get source => text()();
+
+  DateTimeColumn get fetchedAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+class AlertNotificationStates extends Table {
+  IntColumn get alertId => integer()();
+
+  DateTimeColumn get lastNotifiedAt => dateTime()();
+
+  @override
+  Set<Column<Object>>? get primaryKey => {alertId};
+}
+
+class AlertNotificationEvents extends Table {
+  IntColumn get id => integer().autoIncrement()();
+
+  IntColumn get alertId => integer()();
+
+  TextColumn get spotName => text()();
+
+  DateTimeColumn get activatedAt => dateTime()();
+
+  RealColumn get speedKn => real()();
+
+  IntColumn get directionDeg => integer()();
+
+  TextColumn get source => text()();
+}
+
+class GearItems extends Table {
+  IntColumn get id => integer().autoIncrement()();
+
+  IntColumn get userId => integer().withDefault(const Constant(1))();
+
+  TextColumn get name => text()();
+
+  TextColumn get type => text()();
+
+  TextColumn get size => text().nullable()();
+
+  TextColumn get notes => text().nullable()();
+
+  BoolColumn get isPrimary => boolean().withDefault(const Constant(false))();
+
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+class RecentAuthAccounts extends Table {
+  TextColumn get email => text()();
+
+  DateTimeColumn get lastUsedAt => dateTime()();
+
+  @override
+  Set<Column<Object>>? get primaryKey => {email};
+}
+
+class WeatherSourcePreferences extends Table {
+  TextColumn get spotKey => text()();
+
+  TextColumn get preference => text()();
+
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column<Object>>? get primaryKey => {spotKey};
 }
 
 @DriftDatabase(
@@ -110,13 +199,19 @@ class RideSessions extends Table {
     Stations,
     StationReadings,
     RideSessions,
+    WeatherSnapshots,
+    AlertNotificationStates,
+    AlertNotificationEvents,
+    GearItems,
+    RecentAuthAccounts,
+    WeatherSourcePreferences,
   ],
 )
 class LocalDatabase extends _$LocalDatabase {
   LocalDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -134,8 +229,250 @@ class LocalDatabase extends _$LocalDatabase {
       if (from < 5) {
         await migrator.createTable(rideSessions);
       }
+      if (from < 6) {
+        await migrator.createTable(weatherSnapshots);
+      }
+      if (from < 7) {
+        await migrator.createTable(alertNotificationStates);
+      }
+      if (from < 8) {
+        await migrator.createTable(alertNotificationEvents);
+      }
+      if (from < 9) {
+        await migrator.createTable(gearItems);
+      }
+      if (from < 10) {
+        await customStatement(
+          'ALTER TABLE ride_sessions ADD COLUMN gear_item_id INTEGER NULL',
+        );
+        await customStatement(
+          'ALTER TABLE ride_sessions ADD COLUMN gear_label TEXT NULL',
+        );
+      }
+      if (from < 11) {
+        await migrator.createTable(recentAuthAccounts);
+      }
+      if (from < 12) {
+        await migrator.createTable(weatherSourcePreferences);
+      }
     },
   );
+
+  String _weatherSpotKey(double latitude, double longitude) {
+    final lat = latitude.toStringAsFixed(4);
+    final lon = longitude.toStringAsFixed(4);
+    return '$lat|$lon';
+  }
+
+  Future<void> upsertWeatherSnapshot({
+    required double latitude,
+    required double longitude,
+    required DateTime timestamp,
+    required double speedKn,
+    required double gustKn,
+    required int directionDeg,
+    required String source,
+  }) async {
+    await into(weatherSnapshots).insertOnConflictUpdate(
+      WeatherSnapshotsCompanion(
+        spotKey: Value(_weatherSpotKey(latitude, longitude)),
+        latitude: Value(latitude),
+        longitude: Value(longitude),
+        timestamp: Value(timestamp),
+        speedKn: Value(speedKn),
+        gustKn: Value(gustKn),
+        directionDeg: Value(directionDeg),
+        source: Value(source),
+        fetchedAt: Value(DateTime.now().toUtc()),
+      ),
+    );
+  }
+
+  Future<WeatherSnapshot?> getWeatherSnapshot({
+    required double latitude,
+    required double longitude,
+  }) {
+    return (select(weatherSnapshots)
+          ..where(
+            (tbl) => tbl.spotKey.equals(_weatherSpotKey(latitude, longitude)),
+          )
+          ..limit(1))
+        .getSingleOrNull();
+  }
+
+  Future<DateTime?> readAlertLastNotifiedAt(int alertId) async {
+    final row =
+        await (select(alertNotificationStates)
+              ..where((tbl) => tbl.alertId.equals(alertId))
+              ..limit(1))
+            .getSingleOrNull();
+    return row?.lastNotifiedAt;
+  }
+
+  Future<void> writeAlertLastNotifiedAt({
+    required int alertId,
+    required DateTime at,
+  }) {
+    return into(alertNotificationStates).insertOnConflictUpdate(
+      AlertNotificationStatesCompanion(
+        alertId: Value(alertId),
+        lastNotifiedAt: Value(at.toUtc()),
+      ),
+    );
+  }
+
+  Future<void> addAlertNotificationEvent({
+    required int alertId,
+    required String spotName,
+    required DateTime activatedAt,
+    required double speedKn,
+    required int directionDeg,
+    required String source,
+  }) {
+    return into(alertNotificationEvents).insert(
+      AlertNotificationEventsCompanion.insert(
+        alertId: alertId,
+        spotName: spotName,
+        activatedAt: activatedAt.toUtc(),
+        speedKn: speedKn,
+        directionDeg: directionDeg,
+        source: source,
+      ),
+    );
+  }
+
+  Stream<List<AlertNotificationEvent>> watchRecentAlertNotificationEvents({
+    int limit = 20,
+  }) {
+    return (select(alertNotificationEvents)
+          ..orderBy([(tbl) => OrderingTerm.desc(tbl.activatedAt)])
+          ..limit(limit))
+        .watch();
+  }
+
+  Future<void> clearAlertNotificationEvents() {
+    return delete(alertNotificationEvents).go();
+  }
+
+  Future<void> clearAlertNotificationEventsFiltered({
+    int? alertId,
+    String? spotName,
+    DateTime? activatedAfter,
+  }) {
+    final query = delete(alertNotificationEvents)
+      ..where((tbl) {
+        Expression<bool> predicate = const Constant(true);
+
+        if (alertId != null) {
+          predicate = predicate & tbl.alertId.equals(alertId);
+        }
+        if (spotName != null) {
+          predicate = predicate & tbl.spotName.equals(spotName);
+        }
+        if (activatedAfter != null) {
+          predicate =
+              predicate & tbl.activatedAt.isBiggerOrEqualValue(activatedAfter);
+        }
+
+        return predicate;
+      });
+
+    return query.go();
+  }
+
+  Stream<List<GearItem>> watchGearItems() {
+    return (select(gearItems)
+          ..where((tbl) => tbl.userId.equals(1))
+          ..orderBy([
+            (tbl) => OrderingTerm.desc(tbl.isPrimary),
+            (tbl) => OrderingTerm.asc(tbl.createdAt),
+          ]))
+        .watch();
+  }
+
+  Future<int> addGearItem({
+    required String name,
+    required String type,
+    String? size,
+    String? notes,
+  }) {
+    return into(gearItems).insert(
+      GearItemsCompanion.insert(
+        name: name,
+        type: type,
+        size: Value(size),
+        notes: Value(notes),
+      ),
+    );
+  }
+
+  Future<void> deleteGearItem(int itemId) {
+    return (delete(gearItems)..where((tbl) => tbl.id.equals(itemId))).go();
+  }
+
+  Future<void> setPrimaryGearItem(int itemId) async {
+    await transaction(() async {
+      await (update(gearItems)..where((tbl) => tbl.userId.equals(1))).write(
+        const GearItemsCompanion(isPrimary: Value(false)),
+      );
+
+      await (update(gearItems)..where((tbl) => tbl.id.equals(itemId))).write(
+        const GearItemsCompanion(isPrimary: Value(true)),
+      );
+    });
+  }
+
+  Future<void> touchRecentAuthAccount(String email) {
+    return into(recentAuthAccounts).insertOnConflictUpdate(
+      RecentAuthAccountsCompanion(
+        email: Value(email.trim().toLowerCase()),
+        lastUsedAt: Value(DateTime.now().toUtc()),
+      ),
+    );
+  }
+
+  Stream<List<RecentAuthAccount>> watchRecentAuthAccounts({int limit = 5}) {
+    return (select(recentAuthAccounts)
+          ..orderBy([(tbl) => OrderingTerm.desc(tbl.lastUsedAt)])
+          ..limit(limit))
+        .watch();
+  }
+
+  Future<void> deleteRecentAuthAccount(String email) {
+    final normalized = email.trim().toLowerCase();
+    return (delete(
+      recentAuthAccounts,
+    )..where((tbl) => tbl.email.equals(normalized))).go();
+  }
+
+  Future<String?> readWeatherSourcePreference({
+    required double latitude,
+    required double longitude,
+  }) async {
+    final row =
+        await (select(weatherSourcePreferences)
+              ..where(
+                (tbl) =>
+                    tbl.spotKey.equals(_weatherSpotKey(latitude, longitude)),
+              )
+              ..limit(1))
+            .getSingleOrNull();
+    return row?.preference;
+  }
+
+  Future<void> writeWeatherSourcePreference({
+    required double latitude,
+    required double longitude,
+    required String preference,
+  }) {
+    return into(weatherSourcePreferences).insertOnConflictUpdate(
+      WeatherSourcePreferencesCompanion(
+        spotKey: Value(_weatherSpotKey(latitude, longitude)),
+        preference: Value(preference),
+        updatedAt: Value(DateTime.now().toUtc()),
+      ),
+    );
+  }
 
   Future<bool?> readAuthSession() async {
     final row = await (select(
@@ -415,6 +752,8 @@ class LocalDatabase extends _$LocalDatabase {
     required double distanceKm,
     required double avgSpeedKn,
     required double maxSpeedKn,
+    int? gearItemId,
+    String? gearLabel,
   }) async {
     await into(rideSessions).insert(
       RideSessionsCompanion.insert(
@@ -425,6 +764,8 @@ class LocalDatabase extends _$LocalDatabase {
         distanceKm: distanceKm,
         avgSpeedKn: avgSpeedKn,
         maxSpeedKn: maxSpeedKn,
+        gearItemId: Value(gearItemId),
+        gearLabel: Value(gearLabel),
       ),
     );
   }

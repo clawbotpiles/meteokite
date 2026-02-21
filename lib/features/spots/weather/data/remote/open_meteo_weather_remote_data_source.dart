@@ -1,12 +1,17 @@
 import 'package:dio/dio.dart';
 import 'package:meteokite/core/config/env/env_config.dart';
+import 'package:meteokite/features/spots/weather/data/remote/weather_remote_data_source.dart';
 import 'package:meteokite/features/spots/weather/domain/entities/wind_snapshot.dart';
 
-class OpenMeteoWeatherRemoteDataSource {
+class OpenMeteoWeatherRemoteDataSource implements WeatherRemoteDataSource {
   const OpenMeteoWeatherRemoteDataSource(this._dio);
 
   final Dio _dio;
 
+  @override
+  bool get isConfigured => true;
+
+  @override
   Future<WindSnapshot> getCurrentWind({
     required double latitude,
     required double longitude,
@@ -20,7 +25,7 @@ class OpenMeteoWeatherRemoteDataSource {
       queryParameters: {
         'latitude': latitude,
         'longitude': longitude,
-        'current': 'wind_speed_10m,wind_gusts_10m,wind_direction_10m,time',
+        'current': 'wind_speed_10m,wind_gusts_10m,wind_direction_10m',
         'wind_speed_unit': 'kn',
       },
     );

@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:meteokite/core/config/env/env_config.dart';
-import 'package:meteokite/core/storage/database_provider.dart';
-import 'package:meteokite/core/storage/local_database.dart';
+import 'package:meteokite/features/auth/domain/repositories/auth_repository.dart';
+import 'package:meteokite/features/auth/presentation/providers/auth_repository_provider.dart';
 
 class AuthSession {
   const AuthSession({
@@ -14,23 +14,22 @@ class AuthSession {
 }
 
 class AuthSessionNotifier extends AsyncNotifier<AuthSession> {
-  late final LocalDatabase _db;
+  late final AuthRepository _repository;
 
   @override
   Future<AuthSession> build() async {
-    _db = ref.read(localDatabaseProvider);
-    final persisted = await _db.readAuthSession();
-    final hasCompletedProfile = await _db.hasCompletedProfile();
+    _repository = ref.read(authRepositoryProvider);
+    final persisted = await _repository.readPersistedSession();
+    final hasCompletedProfile = await _repository.hasCompletedProfile();
     return AuthSession(
-      isAuthenticated: persisted ?? EnvConfig.devBypassEnabled,
+      isAuthenticated: persisted || EnvConfig.devBypassEnabled,
       hasCompletedProfile: hasCompletedProfile,
     );
   }
 
   Future<void> signInDev() async {
-    await _db.writeAuthSession(isAuthenticated: true);
-    await _db.ensureUserSkeleton();
-    final hasCompletedProfile = await _db.hasCompletedProfile();
+    await _repository.signInWithEmail(email: 'dev@meteokite.local');
+    final hasCompletedProfile = await _repository.hasCompletedProfile();
     state = AsyncData(
       AuthSession(
         isAuthenticated: true,
@@ -40,8 +39,8 @@ class AuthSessionNotifier extends AsyncNotifier<AuthSession> {
   }
 
   Future<void> signOut() async {
-    await _db.writeAuthSession(isAuthenticated: false);
-    final hasCompletedProfile = await _db.hasCompletedProfile();
+    await _repository.signOut();
+    final hasCompletedProfile = await _repository.hasCompletedProfile();
     state = AsyncData(
       AuthSession(
         isAuthenticated: false,
@@ -54,7 +53,7 @@ class AuthSessionNotifier extends AsyncNotifier<AuthSession> {
     required String displayName,
     required String preferredDiscipline,
   }) async {
-    await _db.upsertUserProfile(
+    await _repository.completeProfile(
       displayName: displayName,
       preferredDiscipline: preferredDiscipline,
     );
@@ -64,6 +63,36 @@ class AuthSessionNotifier extends AsyncNotifier<AuthSession> {
     state = AsyncData(
       AuthSession(isAuthenticated: isAuthenticated, hasCompletedProfile: true),
     );
+  }
+
+  Future<String?> signInWithEmail(String email) async {
+    final result = await _repository.signInWithEmail(email: email);
+    return _applySignInResult(result.success, result.message);
+  }
+
+  Future<String?> signInWithGoogle() async {
+    final result = await _repository.signInWithGoogle();
+    return _applySignInResult(result.success, result.message);
+  }
+
+  Future<String?> signInWithApple() async {
+    final result = await _repository.signInWithApple();
+    return _applySignInResult(result.success, result.message);
+  }
+
+  Future<String?> _applySignInResult(bool success, String? message) async {
+    if (!success) {
+      return message ?? 'No se pudo iniciar sesion.';
+    }
+
+    final hasCompletedProfile = await _repository.hasCompletedProfile();
+    state = AsyncData(
+      AuthSession(
+        isAuthenticated: true,
+        hasCompletedProfile: hasCompletedProfile,
+      ),
+    );
+    return null;
   }
 }
 

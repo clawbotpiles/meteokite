@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:meteokite/core/theme/app_spacing.dart';
 import 'package:meteokite/features/spots/stations/presentation/providers/stations_providers.dart';
 import 'package:meteokite/shared/widgets/station_card.dart';
+import 'package:meteokite/shared/widgets/session_stats_card.dart';
 
 class StationsPage extends ConsumerStatefulWidget {
   const StationsPage({super.key});
@@ -83,6 +84,7 @@ class _StationsPageState extends ConsumerState<StationsPage> {
     final selectedStation = ref.watch(selectedStationProvider);
     final latestReadingState = ref.watch(latestStationReadingProvider);
     final historyState = ref.watch(stationHistoryProvider);
+    final historySummaryState = ref.watch(stationHistorySummaryProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Spots Stations')),
@@ -132,6 +134,7 @@ class _StationsPageState extends ConsumerState<StationsPage> {
                 gustKn: reading.gustKn,
                 directionDeg: reading.directionDeg,
                 timestamp: reading.timestamp,
+                source: 'station-local',
               );
             },
             loading: () => const Padding(
@@ -183,6 +186,43 @@ class _StationsPageState extends ConsumerState<StationsPage> {
                       },
               ),
             ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Text('Resumen rapido', style: textTheme.titleMedium),
+          const SizedBox(height: AppSpacing.sm),
+          historySummaryState.when(
+            data: (summary) {
+              final trendLabel = summary.trendDeltaKn.abs() < 0.1
+                  ? 'Estable'
+                  : summary.trendDeltaKn > 0
+                  ? 'Subiendo'
+                  : 'Bajando';
+
+              return Column(
+                children: [
+                  SessionStatsCard(
+                    title: 'Viento actual',
+                    value: '${summary.latestSpeedKn.toStringAsFixed(1)} kn',
+                    detail:
+                        'Media ${summary.avgSpeedKn.toStringAsFixed(1)} kn | Tendencia $trendLabel',
+                    icon: Icons.air,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  SessionStatsCard(
+                    title: 'Rango reciente',
+                    value:
+                        '${summary.minSpeedKn.toStringAsFixed(1)} - ${summary.maxSpeedKn.toStringAsFixed(1)} kn',
+                    detail: 'Ultimas 12 muestras',
+                    icon: Icons.show_chart,
+                  ),
+                ],
+              );
+            },
+            loading: () => const Padding(
+              padding: EdgeInsets.all(AppSpacing.md),
+              child: CircularProgressIndicator(),
+            ),
+            error: (error, stackTrace) => Text('Error de resumen: $error'),
           ),
           const SizedBox(height: AppSpacing.lg),
           Text('Historico (ultimas 12 muestras)', style: textTheme.titleMedium),
