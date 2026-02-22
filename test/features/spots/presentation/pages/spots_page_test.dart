@@ -106,7 +106,9 @@ void main() {
     expect(find.text('Ese spot ya esta agregado'), findsOneWidget);
   });
 
-  testWidgets('allows deleting a spot from the list', (tester) async {
+  testWidgets('allows deleting a spot from multi mode selection', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       const MaterialApp(home: Scaffold(body: SpotsPage())),
     );
@@ -123,7 +125,16 @@ void main() {
 
     expect(find.text('Oliva'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Eliminar spot'));
+    final state = tester.state<SpotsPageState>(find.byType(SpotsPage));
+    state.deleteMultipleSpotsFromToolbar();
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Modo eliminar varios'), findsOneWidget);
+
+    await tester.tap(find.byType(ListTile).first);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Aplicar'));
     await tester.pumpAndSettle();
 
     expect(find.text('Oliva'), findsNothing);
@@ -133,7 +144,9 @@ void main() {
     );
   });
 
-  testWidgets('does not allow editing predefined list spots', (tester) async {
+  testWidgets('hides per-card edit action for predefined list spots', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       const MaterialApp(home: Scaffold(body: SpotsPage())),
     );
@@ -148,47 +161,101 @@ void main() {
     await tester.tap(find.text('Guardar spot'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(Icons.edit_outlined).first);
-    await tester.pumpAndSettle();
-
-    expect(find.text('Editar spot'), findsNothing);
+    expect(find.byIcon(Icons.edit_outlined), findsNothing);
   });
 
-  testWidgets('allows editing custom spots only', (tester) async {
+  testWidgets('opens spot detail on card tap and supports app bar back', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       const MaterialApp(home: Scaffold(body: SpotsPage())),
     );
 
     await tester.tap(find.byTooltip('Agregar spot'));
     await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Nombre del spot'),
+      'Oliva',
+    );
+    await tester.tap(find.text('Guardar spot'));
+    await tester.pumpAndSettle();
 
+    await tester.tap(find.text('Oliva'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Spot seleccionado'), findsOneWidget);
+    expect(find.text('Oliva'), findsOneWidget);
+    expect(find.text('Forecast'), findsOneWidget);
+    expect(find.text('Live'), findsOneWidget);
+    expect(find.text('Webcam'), findsOneWidget);
+    expect(find.text('Social'), findsOneWidget);
+    expect(find.byTooltip('Back'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SpotsPage), findsOneWidget);
+  });
+
+  testWidgets('opens wind map screen from forecast section', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: SpotsPage())),
+    );
+
+    await tester.tap(find.byTooltip('Agregar spot'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Nombre del spot'),
+      'Oliva',
+    );
+    await tester.tap(find.text('Guardar spot'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Oliva'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Mapa de viento'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Mapa de viento'), findsOneWidget);
+    expect(find.textContaining('Capa de viento'), findsOneWidget);
+  });
+
+  testWidgets('edits one custom spot from card selection mode', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: SpotsPage())),
+    );
+
+    await tester.tap(find.byTooltip('Agregar spot'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Personalizado'));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('custom-map-area')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Usar punto'));
     await tester.pumpAndSettle();
-
     await tester.enterText(
       find.widgetWithText(TextField, 'Nombre del spot'),
-      'Mi spot custom',
+      'Custom Uno',
     );
     await tester.tap(find.text('Guardar spot'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('Editar spot Mi spot custom'));
+    final state = tester.state<SpotsPageState>(find.byType(SpotsPage));
+    state.editSpotFromToolbar();
     await tester.pumpAndSettle();
 
-    expect(find.text('Editar spot'), findsOneWidget);
+    await tester.tap(find.text('Custom Uno'));
+    await tester.pumpAndSettle();
 
     await tester.enterText(
-      find.widgetWithText(TextField, 'Nombre del spot'),
-      'Mi spot custom editado',
+      find.widgetWithText(TextField, 'Zona / provincia'),
+      'Zona editada',
     );
     await tester.tap(find.text('Guardar cambios'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Mi spot custom editado'), findsOneWidget);
+    expect(find.text('Zona editada'), findsOneWidget);
   });
 
   testWidgets('shows Oficial and Custom chips correctly', (tester) async {

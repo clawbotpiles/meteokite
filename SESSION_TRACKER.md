@@ -242,6 +242,435 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
   - `lib/features/spots/presentation/pages/spots_page.dart`
 - Verificacion ejecutada: `flutter analyze && flutter test test/features/spots/presentation/pages/spots_page_test.dart -r expanded` (ok).
 
+### 2026-02-21 - Spots: correccion de estirado horizontal en overscroll
+
+- Corregido el efecto visual en `Spots` cuando se hace overscroll vertical (arriba/abajo):
+  - se mantiene sensacion tipo muelle vertical,
+  - se elimina la deformacion horizontal de pantalla.
+- Implementado con `ScrollConfiguration` local sin indicador stretch y `BouncingScrollPhysics` en la lista principal.
+- Archivo actualizado:
+  - `lib/features/spots/presentation/pages/spots_page.dart`
+- Verificacion ejecutada: `flutter analyze && flutter test test/features/spots/presentation/pages/spots_page_test.dart -r expanded` (ok).
+
+### 2026-02-21 - Spots: ocultar icono editar en oficiales
+
+- Ajuste UX solicitado en lista de spots:
+  - en spots `Oficial` ya no se muestra icono de editar desactivado,
+  - el icono de editar solo aparece en spots `Custom`.
+- Se mantiene la regla funcional previa (solo custom editable).
+- Archivos actualizados:
+  - `lib/features/spots/presentation/pages/spots_page.dart`
+  - `test/features/spots/presentation/pages/spots_page_test.dart`
+- Verificacion ejecutada: `flutter analyze && flutter test test/features/spots/presentation/pages/spots_page_test.dart -r expanded` (ok).
+
+### 2026-02-21 - Spots: acciones mover a AppBar
+
+- Refactor UX solicitado en `Spots`:
+  - se eliminan iconos de `editar/eliminar` en cada tarjeta,
+  - las acciones se gestionan desde un menu en la `AppBar` de dashboard (solo visible en tab Spots).
+- Menu AppBar en `Spots` incluye:
+  - `Editar spot activo`
+  - `Eliminar spot activo`
+- Comportamiento:
+  - opera siempre sobre el spot marcado como `Activo`,
+  - mantiene la regla de negocio: solo custom editable (en oficiales se muestra feedback por snackbar).
+- Archivos actualizados:
+  - `lib/features/dashboard/presentation/pages/dashboard_page.dart`
+  - `lib/features/spots/presentation/pages/spots_page.dart`
+  - `test/features/spots/presentation/pages/spots_page_test.dart`
+- Verificacion ejecutada: `flutter analyze && flutter test test/features/spots/presentation/pages/spots_page_test.dart -r expanded` (ok).
+
+### 2026-02-21 - Spots: eliminado concepto de "spot activo"
+
+- Se retira completamente el concepto de `spot activo` por feedback de UX.
+- Cambios aplicados:
+  - eliminado chip `Activo` en tarjetas,
+  - eliminada seleccion por tap para marcar activo,
+  - menu AppBar deja de operar sobre "activo" y pasa a operar por seleccion explicita.
+- Nuevos flujos desde AppBar:
+  - `Editar spot`: abre selector de spots custom (si hay mas de uno) y luego editor,
+  - `Eliminar spot`: abre selector de spots y elimina el seleccionado.
+- Ajustes en dashboard:
+  - textos de menu simplificados (`Editar spot`, `Eliminar spot`).
+- Archivos actualizados:
+  - `lib/features/spots/presentation/pages/spots_page.dart`
+  - `lib/features/dashboard/presentation/pages/dashboard_page.dart`
+  - `test/features/spots/presentation/pages/spots_page_test.dart`
+- Verificacion ejecutada: `flutter analyze && flutter test test/features/spots/presentation/pages/spots_page_test.dart -r expanded` (ok).
+
+### 2026-02-21 - Spots: editar/eliminar desde tarjetas tras activar modo en AppBar
+
+- Ajuste UX solicitado: al pulsar `Editar spot` o `Eliminar spot` en AppBar ya no aparece selector modal de spots.
+- Nuevo comportamiento:
+  - AppBar activa un modo temporal (`editar` o `eliminar`),
+  - el usuario ejecuta la accion tocando directamente una tarjeta en la pantalla de spots,
+  - tras aplicar la accion, el modo se desactiva automaticamente.
+- Se muestra aviso contextual mientras el modo esta activo:
+  - `Modo editar: toca una tarjeta para editarla`
+  - `Modo eliminar: toca una tarjeta para borrarla`
+- Reglas conservadas:
+  - editar solo para `Custom`,
+  - en spot `Oficial` se informa por snackbar.
+- Archivos actualizados:
+  - `lib/features/spots/presentation/pages/spots_page.dart`
+  - `lib/features/dashboard/presentation/pages/dashboard_page.dart`
+  - `test/features/spots/presentation/pages/spots_page_test.dart`
+- Verificacion ejecutada: `flutter analyze && flutter test test/features/spots/presentation/pages/spots_page_test.dart -r expanded` (ok).
+
+### 2026-02-21 - Spots: soporte de acciones multiples (editar/eliminar varios)
+
+- Anadida opcion de acciones multiples en menu de AppBar para Spots:
+  - `Editar varios`
+  - `Eliminar varios`
+- Flujo UX:
+  - al activar modo multiple, se seleccionan tarjetas directamente en pantalla,
+  - se muestra contador de seleccionados y acciones `Cancelar` / `Aplicar`.
+- `Editar varios` (solo custom):
+  - permite seleccionar varios spots custom,
+  - aplica cambio masivo de `Zona / provincia` via modal.
+- `Eliminar varios`:
+  - permite seleccionar varios spots y borrarlos en una sola accion.
+- Se mantiene tambien modo simple por tarjetas para `Editar spot` y `Eliminar spot`.
+- Archivos actualizados:
+  - `lib/features/spots/presentation/pages/spots_page.dart`
+  - `lib/features/dashboard/presentation/pages/dashboard_page.dart`
+  - `test/features/spots/presentation/pages/spots_page_test.dart`
+- Verificacion ejecutada: `flutter analyze && flutter test test/features/spots/presentation/pages/spots_page_test.dart -r expanded` (ok).
+
+### 2026-02-21 - Spots: acciones solo en modo multiple
+
+- Ajuste de producto por feedback:
+  - se elimina el flujo de editar/eliminar de uno en uno,
+  - se mantiene exclusivamente operativa la gestion por lotes (`Editar varios`, `Eliminar varios`).
+- UX final:
+  - activas modo desde AppBar,
+  - seleccionas tarjetas,
+  - confirmas con `Aplicar`.
+- Limpieza tecnica asociada:
+  - eliminadas rutas y estado de accion simple,
+  - simplificado formulario de alta para uso exclusivo de creacion (sin modo editar).
+- Archivos actualizados:
+  - `lib/features/spots/presentation/pages/spots_page.dart`
+  - `lib/features/dashboard/presentation/pages/dashboard_page.dart`
+  - `test/features/spots/presentation/pages/spots_page_test.dart`
+- Verificacion ejecutada: `flutter analyze && flutter test test/features/spots/presentation/pages/spots_page_test.dart -r expanded` (ok).
+
+### 2026-02-21 - Spots: menu simplificado (Editar uno, Eliminar en lote)
+
+- Ajuste UX solicitado:
+  - `Editar` pasa a flujo de un solo spot (seleccionando tarjeta en modo editar).
+  - `Eliminar` mantiene comportamiento en lote, pero sin texto "varios" en el menu.
+- Se conserva opcion explicita `Editar varios` para cambios masivos de zona en custom.
+- Menu final en AppBar de Spots:
+  - `Editar`
+  - `Editar varios`
+  - `Eliminar`
+- Archivos actualizados:
+  - `lib/features/spots/presentation/pages/spots_page.dart`
+  - `lib/features/dashboard/presentation/pages/dashboard_page.dart`
+  - `test/features/spots/presentation/pages/spots_page_test.dart`
+- Verificacion ejecutada: `flutter analyze && flutter test test/features/spots/presentation/pages/spots_page_test.dart -r expanded` (ok).
+
+### 2026-02-21 - Spots: ajuste final acciones (Editar 1, Eliminar lote)
+
+- Ajuste final por feedback:
+  - `Editar varios` eliminado,
+  - `Editar` queda solo para 1 spot cada vez,
+  - `Eliminar` mantiene seleccion multiple por tarjetas.
+- Menu final en AppBar de Spots:
+  - `Editar`
+  - `Eliminar`
+- Comportamiento:
+  - `Editar`: activa modo editar simple y abre formulario al tocar un spot custom,
+  - `Eliminar`: activa modo seleccion multiple y elimina seleccionados al pulsar `Aplicar`.
+- Archivos actualizados:
+  - `lib/features/spots/presentation/pages/spots_page.dart`
+  - `lib/features/dashboard/presentation/pages/dashboard_page.dart`
+  - `test/features/spots/presentation/pages/spots_page_test.dart`
+- Verificacion ejecutada: `flutter analyze && flutter test test/features/spots/presentation/pages/spots_page_test.dart -r expanded` (ok).
+
+### 2026-02-21 - Spots: navegacion a detalle de spot y volver atras
+
+- Al pulsar una tarjeta de spot en modo normal (sin accion pendiente), ahora navega a pantalla de detalle del spot.
+- Nueva pantalla de detalle con AppBar propia y vuelta atras desde el boton del AppBar.
+- Se conserva comportamiento existente en modos de accion:
+  - `Editar` (1 a 1) y `Eliminar` (lote) siguen operando sobre tarjetas.
+- Archivos actualizados:
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+  - `lib/features/spots/presentation/pages/spots_page.dart`
+  - `test/features/spots/presentation/pages/spots_page_test.dart`
+- Verificacion ejecutada: `flutter analyze && flutter test test/features/spots/presentation/pages/spots_page_test.dart -r expanded` (ok).
+
+### 2026-02-21 - Spot detalle: AppBar simplificado y toggle de secciones
+
+- Ajuste solicitado en pantalla de spot seleccionado:
+  - titulo de AppBar cambiado de nombre del spot a `Spot seleccionado`,
+  - se mantiene boton de volver atras en AppBar.
+- Debajo de la tarjeta principal se anade selector tipo toggle con 4 vistas:
+  - `Prevision`
+  - `Live`
+  - `Webcam`
+  - `Social`
+- Cada vista muestra bloque placeholder inicial para evolucionar contenido funcional por seccion.
+- Archivos actualizados:
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+  - `test/features/spots/presentation/pages/spots_page_test.dart`
+- Verificacion ejecutada: `flutter analyze && flutter test test/features/spots/presentation/pages/spots_page_test.dart -r expanded` (ok).
+
+### 2026-02-21 - Spot detalle: etiqueta Prevision -> Forecast
+
+- Cambio de copy en toggle de secciones de spot seleccionado:
+  - `Prevision` pasa a `Forecast`.
+- Archivos actualizados:
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+  - `test/features/spots/presentation/pages/spots_page_test.dart`
+
+### 2026-02-21 - Spot detalle: toggle compact para labels en una linea
+
+- Ajustado el toggle de secciones en detalle de spot para que ocupe menos ancho visual y no rompa texto en varias lineas.
+- Cambios aplicados:
+  - estilo compact (`VisualDensity.compact`),
+  - menor padding horizontal,
+  - labels con `softWrap: false`,
+  - scroll horizontal suave del conjunto para mantener legibilidad en pantallas pequenas.
+- Archivo actualizado:
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-21 - Reversion toggle compact en detalle de spot
+
+- Revertidos los cambios de compactacion del toggle en detalle de spot por decision de UX.
+- Se restaura comportamiento/estilo anterior del `SegmentedButton`.
+- Archivo actualizado:
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+
+### 2026-02-21 - Spot detalle: quitar efecto muelle horizontal
+
+- Ajustada la pantalla `Spot seleccionado` para eliminar el efecto de arrastre tipo muelle al deslizar lateralmente (izquierda/derecha).
+- Implementacion:
+  - `ScrollConfiguration` local sin overscroll stretch,
+  - `ClampingScrollPhysics` en la lista de detalle.
+- Archivo actualizado:
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-21 - Spot detalle: Forecast con selector de proveedor meteo
+
+- En seccion `Forecast` se elimina la tarjeta de texto de prevision placeholder.
+- En su lugar se anade una caja/select para elegir proveedor meteorologico disponible.
+- Proveedores iniciales cargados en UI:
+  - `Open-Meteo`
+  - `AEMET`
+  - `Windguru`
+- Para `Live`, `Webcam` y `Social` se mantiene tarjeta placeholder de contenido.
+- Archivo actualizado:
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-21 - Spot detalle: tabla Forecast con oleaje/lluvia activables
+
+- En `Forecast`, tras seleccionar proveedor meteo, se anade una tabla horaria estilo app de viento con columnas base:
+  - `Hora`
+  - `Viento (kt)`
+  - `Racha (kt)`
+- Se agregan parametros extra activables/desactivables con chips:
+  - `Oleaje` (m)
+  - `Lluvia` (si/no + mm)
+- Los datos mostrados cambian por proveedor seleccionado (`Open-Meteo`, `AEMET`, `Windguru`) con dataset UI inicial.
+- Archivo actualizado:
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-21 - Spot detalle: formato tipo Windguru + selector de modelo
+
+- Refinado bloque `Forecast` hacia estilo visual tipo Windguru:
+  - tabla compacta por filas metricas y columnas horarias,
+  - celdas de viento/racha con codificacion de color,
+  - lluvia con intensidad visual por color.
+- Anadido selector de modelo de prevision:
+  - `GFS`, `AROME`, `ICON`, `ECMWF`.
+- Se mantiene selector de proveedor meteo y toggles activables:
+  - `Oleaje`
+  - `Lluvia`
+- Archivo actualizado:
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+- Verificacion ejecutada: `flutter analyze && flutter test test/features/spots/presentation/pages/spots_page_test.dart -r compact` (ok).
+
+### 2026-02-21 - Spot detalle: tabla Forecast mas grande
+
+- Ajuste visual de la tabla en `Forecast` para mejorar legibilidad:
+  - celdas mas grandes (padding aumentado),
+  - tipografia subida a `bodyMedium`,
+  - ancho de columna aumentado (de 82 a 98).
+- Archivo actualizado:
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-21 - Spot detalle: direccion viento + temperatura + presion
+
+- Extendida la tabla `Forecast` para incluir parametros extra solicitados:
+  - `Direccion` del viento con flecha orientada por grados,
+  - `Temp (C)`,
+  - `Presion (hPa)`.
+- Se mantienen toggles para `Oleaje` y `Lluvia`.
+- Archivo actualizado:
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-21 - Spot detalle: unidad direccion simplificada
+
+- Ajustado formato de direccion del viento en tabla Forecast:
+  - de `deg` a simbolo `º`.
+- Archivo actualizado:
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+
+### 2026-02-21 - Spot detalle: direccion solo con flecha grande
+
+- Ajuste visual en columna de direccion del viento:
+  - se elimina el texto de grados,
+  - se usa solo flecha rotada por direccion,
+  - flecha mas grande y definida (`arrow_upward_rounded`, size 22).
+- Archivo actualizado:
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-21 - Spot detalle: flecha direccion mas gruesa
+
+- Ajuste visual adicional solicitado para la flecha de direccion del viento:
+  - mismo icono/forma,
+  - trazo mas grueso usando ejes de Material Symbols (`fill`, `weight`, `grade`) y tamano 24.
+- Archivo actualizado:
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-21 - Spot detalle: nuevo icono direccion tipo puntero
+
+- Cambiado el icono de direccion del viento por un modelo mas tipo puntero de raton (`near_me_rounded`) manteniendo la rotacion por grados.
+- Archivo actualizado:
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-21 - Spot detalle: puntero con rabito en direccion
+
+- Ajustado icono de direccion del viento a variante con rabito (`assistant_navigation`) manteniendo la rotacion por grados.
+- Archivo actualizado:
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-21 - Spot detalle: revert icono direccion a near_me_rounded
+
+- Revertido icono de direccion del viento al modelo anterior preferido (`near_me_rounded`).
+- Archivo actualizado:
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+
+### 2026-02-21 - Spot detalle: cloud cover en tabla Forecast
+
+- Anadido parametro `Cloud cover (%)` en la tabla Forecast.
+- Se integra como nueva fila en el formato tipo Windguru junto al resto de variables meteo.
+- Actualizado dataset UI mock de proveedores para incluir cobertura nubosa por hora.
+- Archivo actualizado:
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-21 - Spot detalle: pantalla dedicada de mapa de viento
+
+- El boton `Mapa de viento` ahora navega a pantalla dedicada en lugar de snackbar.
+- Nueva pantalla `Mapa de viento` con:
+  - base de mapa open source (OpenStreetMap via `flutter_map`),
+  - capa visual de flechas/kt superpuesta estilo mapa de viento,
+  - card inferior informativa del spot.
+- Archivos actualizados:
+  - `lib/features/spots/presentation/pages/wind_map_page.dart`
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+  - `test/features/spots/presentation/pages/spots_page_test.dart`
+- Verificacion ejecutada: `flutter analyze && flutter test test/features/spots/presentation/pages/spots_page_test.dart -r compact` (ok).
+
+### 2026-02-21 - Spot detalle: Live con lista de estaciones cercanas
+
+- Reemplazado placeholder de `Live` por lista de estaciones meteorologicas cercanas al spot.
+- Cada item muestra:
+  - nombre de estacion,
+  - proveedor,
+  - distancia en km.
+- Archivo actualizado:
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-21 - Spot detalle: Live con caja seleccionable de estacion
+
+- Ajustado bloque `Live` para mostrar una caja seleccionable (dropdown) en lugar de listar todas las estaciones a la vez.
+- La caja muestra nombre + distancia, y debajo se visualiza el proveedor de la estacion seleccionada.
+- Archivo actualizado:
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-21 - Spot detalle: Live con rosa de vientos y unidad configurable
+
+- Al seleccionar estacion en `Live`, ahora se muestra:
+  - rosa de vientos con lectura real (direccion + velocidad),
+  - selector de unidad de viento (`kt`, `km/h`, `mph`, `Bft`),
+  - bloque de lecturas en tiempo real (viento, racha, temperatura, presion, humedad, lluvia).
+- Archivo actualizado:
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-21 - Spot detalle: chip semaforo de navegabilidad
+
+- En tarjeta de rosa de los vientos se reemplaza el titulo por chip semaforo de navegabilidad.
+- Estados implementados por rango de viento actual:
+  - `Navegable` (verde)
+  - `Condicional` (amarillo)
+  - `No navegable` (rojo)
+- Archivo actualizado:
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-21 - Spot detalle: grafica historica en Live
+
+- Anadida grafica de historico de lecturas reales debajo de las tarjetas de metricas en seccion `Live`.
+- Implementada como linea + area en `CustomPainter` con serie de 12 puntos por estacion seleccionada.
+- Mantiene coherencia con selector de estacion y unidad de viento.
+- Archivo actualizado:
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-21 - Spot detalle: quitar toggles de lluvia/oleaje y anadir boton mapa
+
+- Eliminados toggles de `Lluvia` y `Oleaje` en Forecast.
+- Anadido boton `Mapa de viento` en su lugar.
+- La tabla Forecast mantiene visibles las filas de oleaje y lluvia de forma fija.
+- Archivo actualizado:
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-21 - Spot detalle: ajuste tipografia toggle (-1)
+
+- Reducido 1 punto el tamano de letra del `SegmentedButton` en pantalla de spot seleccionado para mejorar encaje horizontal de labels.
+- Archivo actualizado:
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-21 - Spot detalle: tipografia toggle a 11
+
+- Ajuste adicional solicitado: labels del toggle de secciones en detalle de spot pasan a `fontSize: 11`.
+- Archivo actualizado:
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+
+### 2026-02-21 - Reversion tipografia toggle en spot detalle
+
+- Revertidos los cambios de tamano de fuente del toggle de secciones.
+- Se restaura la tipografia por defecto del `SegmentedButton` (estado inicial).
+- Archivo actualizado:
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+
+### 2026-02-21 - Patron UI reutilizable para gestion de listas
+
+- Queda registrado como patron para reutilizar en otras tabs/paginas:
+  - accion simple desde AppBar (`Editar`) + accion en lote desde AppBar (`Eliminar`),
+  - ejecucion directa sobre tarjetas (sin selector modal extra),
+  - modo contextual visible con `Cancelar` / `Aplicar` cuando hay seleccion multiple.
+- Objetivo: mantener consistencia UX en futuras implementaciones (Sessions, Community, Perfil, etc.).
+
 ### 2026-02-21 - IDE debug simplificado para recuperar Hot Reload
 
 - Simplificada configuracion de `Run and Debug` para evitar lanzar por error modos sin Hot Reload.

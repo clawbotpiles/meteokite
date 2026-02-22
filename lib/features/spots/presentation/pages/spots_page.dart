@@ -4,20 +4,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:meteokitev2_0/core/theme/app_spacing.dart';
+import 'package:meteokitev2_0/features/spots/presentation/pages/spot_detail_page.dart';
 
 class SpotsPage extends StatefulWidget {
   const SpotsPage({super.key});
 
   @override
-  State<SpotsPage> createState() => _SpotsPageState();
+  State<SpotsPage> createState() => SpotsPageState();
 }
 
-class _SpotsPageState extends State<SpotsPage> {
+class SpotsPageState extends State<SpotsPage> {
   final List<_SpotItem> _spots = <_SpotItem>[];
   final _searchController = TextEditingController();
-  String? _activeSpotName;
   _SpotFilter _filter = _SpotFilter.all;
   _SpotSort _sort = _SpotSort.recent;
+  _PendingCardAction _pendingCardAction = _PendingCardAction.none;
+  final Set<String> _selectedSpotNames = <String>{};
   String _searchQuery = '';
 
   List<_SpotItem> get _filteredSpots {
@@ -74,53 +76,197 @@ class _SpotsPageState extends State<SpotsPage> {
 
     setState(() {
       _spots.add(result);
-      _activeSpotName ??= result.name;
     });
   }
 
   Future<void> _showEditSpotSheet(_SpotItem spot) async {
     if (!spot.isCustom) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Solo puedes editar spots custom')),
+      );
       return;
     }
 
-    final existingNames = _spots
-        .where((item) => item != spot)
-        .map((item) => item.name.trim().toLowerCase())
-        .toSet();
+    final nameController = TextEditingController(text: spot.name);
+    final areaController = TextEditingController(text: spot.area);
 
-    final result = await showModalBottomSheet<_SpotItem>(
+    final edited = await showModalBottomSheet<_SpotItem>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (context) => _AddSpotSheet(
-        existingSpotNames: existingNames,
-        initialSpot: spot,
-        mode: _SpotSheetMode.edit,
-      ),
+      builder: (context) {
+        final inset = MediaQuery.viewInsetsOf(context).bottom;
+        return Padding(
+          padding: EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            AppSpacing.sm,
+            AppSpacing.md,
+            AppSpacing.md + inset,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Editar spot',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: 'Nombre del spot'),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              TextField(
+                controller: areaController,
+                decoration: const InputDecoration(
+                  labelText: 'Zona / provincia',
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () {
+                    final nextName = nameController.text.trim();
+                    final nextArea = areaController.text.trim();
+                    if (nextName.isEmpty) {
+                      return;
+                    }
+                    Navigator.of(context).pop(
+                      _SpotItem(
+                        name: nextName,
+                        area: nextArea.isEmpty ? 'Sin zona definida' : nextArea,
+                        isCustom: true,
+                        createdAt: spot.createdAt,
+                      ),
+                    );
+                  },
+                  child: const Text('Guardar cambios'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
 
-    if (!mounted || result == null) {
+    if (!mounted || edited == null) {
+      return;
+    }
+
+    final duplicated = _spots.any(
+      (entry) =>
+          entry != spot &&
+          entry.name.trim().toLowerCase() == edited.name.trim().toLowerCase(),
+    );
+    if (duplicated) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ese spot ya esta agregado')),
+      );
       return;
     }
 
     setState(() {
       final index = _spots.indexOf(spot);
       if (index != -1) {
-        _spots[index] = result;
-      }
-      if (_activeSpotName == spot.name) {
-        _activeSpotName = result.name;
+        _spots[index] = edited;
       }
     });
   }
 
-  void _removeSpot(_SpotItem spot) {
+  void editSpotFromToolbar() {
+    final customSpots = _spots.where((spot) => spot.isCustom).toList();
+    if (customSpots.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No hay spots custom para editar')),
+      );
+      return;
+    }
+
     setState(() {
-      _spots.remove(spot);
-      if (_activeSpotName == spot.name) {
-        _activeSpotName = _spots.isEmpty ? null : _spots.first.name;
-      }
+      _pendingCardAction = _PendingCardAction.edit;
+      _selectedSpotNames.clear();
     });
+  }
+
+  void deleteMultipleSpotsFromToolbar() {
+    if (_spots.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No hay spots para eliminar')),
+      );
+      return;
+    }
+
+    setState(() {
+      _pendingCardAction = _PendingCardAction.deleteMany;
+      _selectedSpotNames.clear();
+    });
+  }
+
+  bool get _isMultiMode => _pendingCardAction == _PendingCardAction.deleteMany;
+
+  void _cancelPendingActionMode() {
+    setState(() {
+      _pendingCardAction = _PendingCardAction.none;
+      _selectedSpotNames.clear();
+    });
+  }
+
+  Future<void> _applyPendingBatchAction() async {
+    if (_selectedSpotNames.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selecciona al menos un spot')),
+      );
+      return;
+    }
+
+    if (_pendingCardAction == _PendingCardAction.deleteMany) {
+      setState(() {
+        _spots.removeWhere((spot) => _selectedSpotNames.contains(spot.name));
+        _pendingCardAction = _PendingCardAction.none;
+        _selectedSpotNames.clear();
+      });
+      return;
+    }
+
+    return;
+  }
+
+  Future<void> _handleCardTap(_SpotItem spot) async {
+    if (_pendingCardAction == _PendingCardAction.none) {
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => SpotDetailPage(
+            name: spot.name,
+            area: spot.area,
+            isCustom: spot.isCustom,
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (_pendingCardAction == _PendingCardAction.edit) {
+      setState(() {
+        _pendingCardAction = _PendingCardAction.none;
+      });
+      await _showEditSpotSheet(spot);
+      return;
+    }
+
+    if (_pendingCardAction == _PendingCardAction.deleteMany) {
+      setState(() {
+        if (_selectedSpotNames.contains(spot.name)) {
+          _selectedSpotNames.remove(spot.name);
+        } else {
+          _selectedSpotNames.add(spot.name);
+        }
+      });
+      return;
+    }
+
+    return;
   }
 
   @override
@@ -135,209 +281,241 @@ class _SpotsPageState extends State<SpotsPage> {
 
     return Stack(
       children: [
-        ListView(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          children: [
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Spots', style: textTheme.headlineSmall),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      'Aqui mostraremos spots guardados y meteo activa.',
-                      style: textTheme.bodyMedium,
-                    ),
-                  ],
-                ),
-              ),
+        ScrollConfiguration(
+          behavior: const _VerticalBounceNoStretchBehavior(),
+          child: ListView(
+            physics: const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
             ),
-            const SizedBox(height: AppSpacing.sm),
-            if (_spots.isEmpty)
+            padding: const EdgeInsets.all(AppSpacing.md),
+            children: [
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(AppSpacing.lg),
-                  child: Text(
-                    'Todavia no has agregado spots. Usa el boton + para anadir el primero.',
-                    style: textTheme.bodyMedium,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Spots', style: textTheme.headlineSmall),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        'Aqui mostraremos spots guardados y meteo activa.',
+                        style: textTheme.bodyMedium,
+                      ),
+                    ],
                   ),
                 ),
-              )
-            else ...[
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    ChoiceChip(
-                      key: const Key('spots-filter-all'),
-                      label: const Text('Todos'),
-                      selected: _filter == _SpotFilter.all,
-                      onSelected: (_) {
-                        setState(() {
-                          _filter = _SpotFilter.all;
-                        });
-                      },
-                    ),
-                    const SizedBox(width: AppSpacing.xs),
-                    ChoiceChip(
-                      key: const Key('spots-filter-official'),
-                      label: const Text('Oficiales'),
-                      selected: _filter == _SpotFilter.official,
-                      onSelected: (_) {
-                        setState(() {
-                          _filter = _SpotFilter.official;
-                        });
-                      },
-                    ),
-                    const SizedBox(width: AppSpacing.xs),
-                    ChoiceChip(
-                      key: const Key('spots-filter-custom'),
-                      label: const Text('Custom'),
-                      selected: _filter == _SpotFilter.custom,
-                      onSelected: (_) {
-                        setState(() {
-                          _filter = _SpotFilter.custom;
-                        });
-                      },
-                    ),
-                  ],
-                ),
               ),
               const SizedBox(height: AppSpacing.sm),
-              TextField(
-                key: const Key('spots-search-input'),
-                controller: _searchController,
-                onChanged: (value) {
-                  setState(() {
-                    _searchQuery = value;
-                  });
-                },
-                decoration: InputDecoration(
-                  labelText: 'Buscar spots',
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: _searchQuery.isEmpty
-                      ? null
-                      : IconButton(
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() {
-                              _searchQuery = '';
-                            });
-                          },
-                          tooltip: 'Limpiar busqueda',
-                          icon: const Icon(Icons.close),
-                        ),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    ChoiceChip(
-                      key: const Key('spots-sort-recent'),
-                      label: const Text('Recientes'),
-                      selected: _sort == _SpotSort.recent,
-                      onSelected: (_) {
-                        setState(() {
-                          _sort = _SpotSort.recent;
-                        });
-                      },
-                    ),
-                    const SizedBox(width: AppSpacing.xs),
-                    ChoiceChip(
-                      key: const Key('spots-sort-az'),
-                      label: const Text('A-Z'),
-                      selected: _sort == _SpotSort.az,
-                      onSelected: (_) {
-                        setState(() {
-                          _sort = _SpotSort.az;
-                        });
-                      },
-                    ),
-                    const SizedBox(width: AppSpacing.xs),
-                    ChoiceChip(
-                      key: const Key('spots-sort-za'),
-                      label: const Text('Z-A'),
-                      selected: _sort == _SpotSort.za,
-                      onSelected: (_) {
-                        setState(() {
-                          _sort = _SpotSort.za;
-                        });
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              if (_filteredSpots.isEmpty)
+              if (_spots.isEmpty)
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(AppSpacing.lg),
                     child: Text(
-                      'No hay spots para este filtro.',
+                      'Todavia no has agregado spots. Usa el boton + para anadir el primero.',
                       style: textTheme.bodyMedium,
                     ),
                   ),
+                )
+              else ...[
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      ChoiceChip(
+                        key: const Key('spots-filter-all'),
+                        label: const Text('Todos'),
+                        selected: _filter == _SpotFilter.all,
+                        onSelected: (_) {
+                          setState(() {
+                            _filter = _SpotFilter.all;
+                          });
+                        },
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      ChoiceChip(
+                        key: const Key('spots-filter-official'),
+                        label: const Text('Oficiales'),
+                        selected: _filter == _SpotFilter.official,
+                        onSelected: (_) {
+                          setState(() {
+                            _filter = _SpotFilter.official;
+                          });
+                        },
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      ChoiceChip(
+                        key: const Key('spots-filter-custom'),
+                        label: const Text('Custom'),
+                        selected: _filter == _SpotFilter.custom,
+                        onSelected: (_) {
+                          setState(() {
+                            _filter = _SpotFilter.custom;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
                 ),
-              ..._filteredSpots.map(
-                (spot) => Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                  child: Card(
-                    child: ListTile(
-                      leading: const Icon(Icons.place_outlined),
-                      title: Text(spot.name),
-                      subtitle: Column(
+                const SizedBox(height: AppSpacing.sm),
+                TextField(
+                  key: const Key('spots-search-input'),
+                  controller: _searchController,
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value;
+                    });
+                  },
+                  decoration: InputDecoration(
+                    labelText: 'Buscar spots',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _searchQuery.isEmpty
+                        ? null
+                        : IconButton(
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {
+                                _searchQuery = '';
+                              });
+                            },
+                            tooltip: 'Limpiar busqueda',
+                            icon: const Icon(Icons.close),
+                          ),
+                  ),
+                ),
+                if (_pendingCardAction != _PendingCardAction.none) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(spot.area),
-                          const SizedBox(height: AppSpacing.xs),
-                          Wrap(
-                            spacing: AppSpacing.xs,
-                            runSpacing: AppSpacing.xs,
-                            children: [
-                              Chip(
-                                label: Text(
-                                  spot.isCustom ? 'Custom' : 'Oficial',
+                          Text(switch (_pendingCardAction) {
+                            _PendingCardAction.edit =>
+                              'Modo editar: toca un spot custom para editarlo',
+                            _PendingCardAction.deleteMany =>
+                              'Modo eliminar varios: selecciona spots y aplica',
+                            _PendingCardAction.none => '',
+                          }, style: textTheme.bodyMedium),
+                          if (_isMultiMode) ...[
+                            const SizedBox(height: AppSpacing.sm),
+                            Text(
+                              '${_selectedSpotNames.length} seleccionados',
+                              style: textTheme.bodySmall,
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                            Row(
+                              children: [
+                                TextButton(
+                                  onPressed: _cancelPendingActionMode,
+                                  child: const Text('Cancelar'),
                                 ),
-                              ),
-                              if (_activeSpotName == spot.name)
-                                const Chip(label: Text('Activo')),
-                            ],
-                          ),
+                                const SizedBox(width: AppSpacing.xs),
+                                FilledButton(
+                                  onPressed: _applyPendingBatchAction,
+                                  child: const Text('Aplicar'),
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
                       ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            onPressed: spot.isCustom
-                                ? () => _showEditSpotSheet(spot)
-                                : null,
-                            tooltip: 'Editar spot ${spot.name}',
-                            icon: const Icon(Icons.edit_outlined),
-                          ),
-                          IconButton(
-                            onPressed: () => _removeSpot(spot),
-                            tooltip: 'Eliminar spot',
-                            icon: const Icon(Icons.delete_outline),
-                          ),
-                        ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: AppSpacing.sm),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      ChoiceChip(
+                        key: const Key('spots-sort-recent'),
+                        label: const Text('Recientes'),
+                        selected: _sort == _SpotSort.recent,
+                        onSelected: (_) {
+                          setState(() {
+                            _sort = _SpotSort.recent;
+                          });
+                        },
                       ),
-                      onTap: () {
-                        setState(() {
-                          _activeSpotName = spot.name;
-                        });
-                      },
+                      const SizedBox(width: AppSpacing.xs),
+                      ChoiceChip(
+                        key: const Key('spots-sort-az'),
+                        label: const Text('A-Z'),
+                        selected: _sort == _SpotSort.az,
+                        onSelected: (_) {
+                          setState(() {
+                            _sort = _SpotSort.az;
+                          });
+                        },
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      ChoiceChip(
+                        key: const Key('spots-sort-za'),
+                        label: const Text('Z-A'),
+                        selected: _sort == _SpotSort.za,
+                        onSelected: (_) {
+                          setState(() {
+                            _sort = _SpotSort.za;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                if (_filteredSpots.isEmpty)
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.lg),
+                      child: Text(
+                        'No hay spots para este filtro.',
+                        style: textTheme.bodyMedium,
+                      ),
+                    ),
+                  ),
+                ..._filteredSpots.map(
+                  (spot) => Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                    child: Card(
+                      child: ListTile(
+                        selected: _selectedSpotNames.contains(spot.name),
+                        leading: const Icon(Icons.place_outlined),
+                        title: Text(spot.name),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(spot.area),
+                            const SizedBox(height: AppSpacing.xs),
+                            Wrap(
+                              spacing: AppSpacing.xs,
+                              runSpacing: AppSpacing.xs,
+                              children: [
+                                Chip(
+                                  label: Text(
+                                    spot.isCustom ? 'Custom' : 'Oficial',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        trailing: _isMultiMode
+                            ? Icon(
+                                _selectedSpotNames.contains(spot.name)
+                                    ? Icons.check_circle
+                                    : Icons.radio_button_unchecked,
+                              )
+                            : null,
+                        onTap: () => _handleCardTap(spot),
+                      ),
                     ),
                   ),
                 ),
-              ),
+              ],
+              const SizedBox(height: 96),
             ],
-            const SizedBox(height: 96),
-          ],
+          ),
         ),
         Positioned(
           right: AppSpacing.md,
@@ -352,6 +530,21 @@ class _SpotsPageState extends State<SpotsPage> {
     );
   }
 }
+
+class _VerticalBounceNoStretchBehavior extends MaterialScrollBehavior {
+  const _VerticalBounceNoStretchBehavior();
+
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) {
+    return child;
+  }
+}
+
+enum _PendingCardAction { none, edit, deleteMany }
 
 enum _SpotFilter { all, official, custom }
 
@@ -393,15 +586,9 @@ const _availableSpots = <_AvailableSpot>[
 ];
 
 class _AddSpotSheet extends StatefulWidget {
-  const _AddSpotSheet({
-    required this.existingSpotNames,
-    this.initialSpot,
-    this.mode = _SpotSheetMode.add,
-  });
+  const _AddSpotSheet({required this.existingSpotNames});
 
   final Set<String> existingSpotNames;
-  final _SpotItem? initialSpot;
-  final _SpotSheetMode mode;
 
   @override
   State<_AddSpotSheet> createState() => _AddSpotSheetState();
@@ -417,10 +604,6 @@ class _AddSpotSheetState extends State<_AddSpotSheet> {
   @override
   void initState() {
     super.initState();
-    if (widget.initialSpot != null) {
-      _nameController.text = widget.initialSpot!.name;
-      _areaController.text = widget.initialSpot!.area;
-    }
     _nameController.addListener(_onNameChanged);
   }
 
@@ -519,7 +702,7 @@ class _AddSpotSheetState extends State<_AddSpotSheet> {
         name: name,
         area: area.isEmpty ? 'Sin zona definida' : area,
         isCustom: _customPoint != null || !_isKnownAvailableSpot(name),
-        createdAt: widget.initialSpot?.createdAt ?? DateTime.now(),
+        createdAt: DateTime.now(),
       ),
     );
   }
@@ -544,17 +727,13 @@ class _AddSpotSheetState extends State<_AddSpotSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            widget.mode == _SpotSheetMode.edit ? 'Editar spot' : 'Agregar spot',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+          Text('Agregar spot', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: AppSpacing.xs),
-          if (widget.mode == _SpotSheetMode.add)
-            OutlinedButton.icon(
-              onPressed: _pickCustomPoint,
-              icon: const Icon(Icons.map_outlined),
-              label: const Text('Personalizado'),
-            ),
+          OutlinedButton.icon(
+            onPressed: _pickCustomPoint,
+            icon: const Icon(Icons.map_outlined),
+            label: const Text('Personalizado'),
+          ),
           if (_customPoint != null) ...[
             const SizedBox(height: AppSpacing.xs),
             Text(
@@ -613,11 +792,7 @@ class _AddSpotSheetState extends State<_AddSpotSheet> {
             child: FilledButton.icon(
               onPressed: _save,
               icon: const Icon(Icons.add_location_alt_outlined),
-              label: Text(
-                widget.mode == _SpotSheetMode.edit
-                    ? 'Guardar cambios'
-                    : 'Guardar spot',
-              ),
+              label: const Text('Guardar spot'),
             ),
           ),
         ],
@@ -625,8 +800,6 @@ class _AddSpotSheetState extends State<_AddSpotSheet> {
     );
   }
 }
-
-enum _SpotSheetMode { add, edit }
 
 class _CustomSpotPoint {
   const _CustomSpotPoint({

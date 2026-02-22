@@ -13,18 +13,51 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   int _selectedIndex = 0;
+  final GlobalKey<SpotsPageState> _spotsKey = GlobalKey<SpotsPageState>();
 
-  static const _pages = <Widget>[
-    SpotsPage(),
-    SessionsPage(),
-    CommunityPage(),
-    ProfilePage(),
+  List<Widget> get _pages => [
+    SpotsPage(key: _spotsKey),
+    const SessionsPage(),
+    const CommunityPage(),
+    const ProfilePage(),
   ];
+
+  Future<void> _handleSpotsToolbarAction(_SpotsToolbarAction action) async {
+    final state = _spotsKey.currentState;
+    if (state == null) {
+      return;
+    }
+
+    switch (action) {
+      case _SpotsToolbarAction.edit:
+        state.editSpotFromToolbar();
+      case _SpotsToolbarAction.delete:
+        state.deleteMultipleSpotsFromToolbar();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('MeteoKite')),
+      appBar: AppBar(
+        title: const Text('MeteoKite'),
+        actions: [
+          if (_selectedIndex == 0)
+            PopupMenuButton<_SpotsToolbarAction>(
+              onSelected: _handleSpotsToolbarAction,
+              itemBuilder: (context) => const [
+                PopupMenuItem(
+                  value: _SpotsToolbarAction.edit,
+                  child: Text('Editar'),
+                ),
+                PopupMenuItem(
+                  value: _SpotsToolbarAction.delete,
+                  child: Text('Eliminar'),
+                ),
+              ],
+            ),
+        ],
+      ),
       body: SafeArea(
         child: IndexedStack(index: _selectedIndex, children: _pages),
       ),
@@ -61,3 +94,5 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 }
+
+enum _SpotsToolbarAction { edit, delete }
