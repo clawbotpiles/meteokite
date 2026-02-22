@@ -779,3 +779,301 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
 - Archivos actualizados:
   - `lib/features/spots/presentation/pages/spot_detail_page.dart`
 - Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - Sessions: vinculacion de dispositivo e importacion
+
+- Implementado el placeholder avanzado de `Session` inspirado en flujo de captura con dispositivo externo:
+  - boton superior derecho `Añadir dispositivo` con selector de tipo (Woo Sports, Apple Watch, Android, SurfR),
+  - lista de dispositivos vinculados con seleccion del dispositivo activo para grabar,
+  - bloque alternativo para `Importar sesion` desde archivo cuando no se usa dispositivo en agua.
+- Se muestra estado de seleccion y mensaje de importacion en modo mock.
+- Archivo actualizado:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - Sessions: lista de dispositivos modificable
+
+- Extendida la lista de dispositivos vinculados para que sea editable:
+  - editar nombre/estado del dispositivo,
+  - eliminar dispositivo vinculado con confirmacion.
+- Si se elimina el dispositivo seleccionado, la seleccion activa pasa al primero disponible (o null si no quedan).
+- Archivo actualizado:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - Sessions: control de sesion con estados (mock fase 1)
+
+- Anadido bloque `Control de sesion` en la pantalla `Session` con flujo mock de captura:
+  - `Iniciar sesion` -> `Detener sesion` -> `Sincronizar` -> `Nueva sesion`.
+- Incluye estado contextual visible, timer de sesion activa y estado de sensores (GPS/Sensores OK) para simular comportamiento de wearable.
+- El boton principal se adapta dinamicamente segun estado y dispositivo seleccionado.
+- Si no hay dispositivo seleccionado, se bloquea el inicio con feedback.
+- Archivo actualizado:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - Sessions: eliminado efecto muelle en pantalla
+
+- Eliminado overscroll/efecto muelle al inicio y final de la pantalla `Session`.
+- Aplicado `ScrollConfiguration` sin indicador de overscroll y `ClampingScrollPhysics` en el `ListView`.
+- Archivo actualizado:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - Sessions: estado de dispositivo visible y editable en lista
+
+- Mejorada UX de gestion de estado de dispositivos vinculados:
+  - eliminado cambio de estado dentro del modal de edicion,
+  - el estado ahora se gestiona de forma visible en cada tarjeta de dispositivo mediante `ChoiceChip`.
+- El modal de edicion queda enfocado solo en renombrar dispositivo.
+- Archivo actualizado:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - Sessions: ajuste UX de estado con menu desplegable
+
+- Revertido el selector por chips para estado de dispositivo.
+- Sustituido por `DropdownButtonFormField` visible dentro de cada tarjeta para un manejo mas limpio y rapido.
+- Se mantiene la edicion de nombre en modal separado.
+- Archivo actualizado:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - Sessions: estado de dispositivo auto-detectado
+
+- Eliminado el control manual de estado en la lista de dispositivos.
+- El estado ahora se muestra como `auto` segun contexto:
+  - seleccionado + listo/grabando/sincronizando,
+  - no seleccionado conectado,
+  - pendientes/desconectados conservan su estado base.
+- Se mantiene edicion solo para nombre y eliminacion de dispositivo.
+- Archivo actualizado:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - Sessions: estado auto en chip visual
+
+- Sustituida la caja de estado auto por un `Chip` con color semaforo para lectura rapida.
+- El chip muestra `estado · auto` y cambia color segun estado detectado.
+- Archivo actualizado:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - Sessions UX: acciones movidas a menu de AppBar
+
+- Eliminado menu de tres puntos por dispositivo dentro de la lista (sin editar nombre ni eliminar local por fila).
+- El estado en chip queda limpio, sin sufijo `auto`.
+- Anadido menu de tres puntos en la `AppBar` cuando esta seleccionada la pestana `Session`, con opcion unica `Eliminar`.
+- La accion `Eliminar` elimina el dispositivo actualmente seleccionado.
+- Archivos actualizados:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+  - `lib/features/dashboard/presentation/pages/dashboard_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - Sessions UX: mover `Añadir dispositivo` a AppBar
+
+- Reubicado `Añadir dispositivo` desde el contenido de la pantalla `Session` a la `AppBar`.
+- En la pestana `Session`, la `AppBar` muestra ahora:
+  - icono `Añadir dispositivo`,
+  - menu de tres puntos con `Eliminar`.
+- El boton de anadir queda a la izquierda del menu de eliminar, como se pidio.
+- Archivos actualizados:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+  - `lib/features/dashboard/presentation/pages/dashboard_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - Sessions UX: icono de anadir simplificado
+
+- Cambiado el icono de `Añadir dispositivo` en AppBar a un simbolo `+` simple (`Icons.add_rounded`).
+- Archivo actualizado:
+  - `lib/features/dashboard/presentation/pages/dashboard_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - Sessions: segmented `Start` / `My Sessions`
+
+- Anadido `SegmentedButton` en la parte superior de `Session` para separar flujos:
+  - `Start`: contiene el placeholder y control actual de captura (dispositivo, control de sesion, importacion),
+  - `My Sessions`: placeholder independiente para el siguiente bloque del roadmap.
+- Esto desacopla el placeholder actual del siguiente placeholder de historial.
+- Archivo actualizado:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - Sessions: `My Sessions` con filtros y feed de sesiones finalizadas
+
+- Eliminada la tarjeta placeholder de `My Sessions`.
+- Anadidos filtros arriba del todo para buscar y filtrar sesiones:
+  - buscador por texto,
+  - filtro por dispositivo,
+  - orden (`Mas recientes` / `Mas antiguas`).
+- Integrado feed de sesiones finalizadas en formato lista.
+- Al completar una sesion en `Start Session` (sincronizacion), se crea una entrada que aparece en `My Sessions`.
+- Archivo actualizado:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - Sessions: termino UX `Subir sesion` en control de captura
+
+- Ajustado texto del flujo de sesion finalizada para alinearlo con experiencia tipo Woo Sports:
+  - boton en estado pendiente pasa de `Sincronizar` a `Subir sesion`,
+  - durante proceso pasa a `Subiendo...`,
+  - mensajes de estado actualizados a terminologia de subida.
+- Archivo actualizado:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - My Sessions: filtros responsive en desplegables
+
+- Ajustado layout de filtros en `My Sessions` para evitar desbordes y cortes visuales.
+- Mejoras aplicadas:
+  - `isExpanded: true` en desplegables,
+  - textos con `ellipsis` en opciones,
+  - distribucion responsive: en ancho estrecho se apilan en columna, en ancho amplio se muestran en fila.
+- Archivo actualizado:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - My Sessions: busqueda tambien por spot
+
+- Extendida la logica de busqueda para incluir el spot ademas de titulo/resumen/dispositivo.
+- En `Start Session` se anade selector de `Spot de la sesion` para etiquetar la sesion al subirla.
+- El feed de `My Sessions` muestra ahora el spot en cada tarjeta de sesion.
+- Archivo actualizado:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - Sessions: reversion de busqueda por spot + dialogo al subir
+
+- Revertido el cambio de `Spot de la sesion` en el bloque `Start Session` y la busqueda explicita por campo spot en `My Sessions`.
+- Nuevo flujo al pulsar `Subir sesion` con sesion finalizada:
+  - se abre un dialogo de configuracion antes de guardar,
+  - permite definir `Spot` y `Resumen de sesion`.
+- Al confirmar en el dialogo, la sesion se guarda/sube y aparece en el feed de `My Sessions`.
+- Archivo actualizado:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - Sessions hotfix: robustez al subir sesion desde dialogo
+
+- Anadidos guards de `mounted` alrededor del flujo asincrono de `Subir sesion` para evitar estados invalidos al cerrar/cambiar pantalla durante el dialogo.
+- Archivo actualizado:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - Hotfix estabilidad UI: callback de tab Session diferido
+
+- Ajustados callbacks entre `SessionsPage` y `DashboardPage` para diferir actualizaciones de estado al siguiente frame (`addPostFrameCallback`).
+- Objetivo: evitar conflictos de reconstruccion al cambiar sub-tab `Start Session` / `My Sessions` y acciones de AppBar.
+- Archivos actualizados:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+  - `lib/features/dashboard/presentation/pages/dashboard_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - Hotfix `Subir sesion`: dialogo sin controller local
+
+- Ajustado el dialogo de `Subir sesion` para evitar fallo al guardar con texto en resumen.
+- Cambio tecnico:
+  - eliminado `TextEditingController` local del dialogo,
+  - retorno directo de datos (`spot`, `notes`) desde `Navigator.pop(...)`.
+- Objetivo: evitar conflictos de ciclo de vida al cerrar dialogo con teclado/foco activo.
+- Archivo actualizado:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - Sessions UX: acciones AppBar solo en `Start Session`
+
+- Rehabilitado enlace entre sub-tab de `Session` y `Dashboard` para mostrar/ocultar acciones de AppBar segun contexto.
+- En `Session`:
+  - `+` y menu `Eliminar` visibles solo en `Start Session`,
+  - ocultos en `My Sessions`.
+- Archivos actualizados:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+  - `lib/features/dashboard/presentation/pages/dashboard_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - Hotfix Dashboard/Sessions: callback defensivo de tab Session
+
+- Eliminado callback post-frame inicial en `SessionsPage` para evitar cambios de estado cruzados al montar arbol de widgets.
+- Endurecido callback `onStartTabChanged` en `DashboardPage` para no llamar `setState` si:
+  - el widget no esta montado,
+  - el valor no cambia.
+- Objetivo: reducir pausas del debugger por aserciones internas al cambiar estados durante reconstruccion.
+- Archivos actualizados:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+  - `lib/features/dashboard/presentation/pages/dashboard_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - Reversion estabilidad: desacoplar callback entre Session y Dashboard
+
+- Revertido el acoplamiento `onStartTabChanged` entre `SessionsPage` y `DashboardPage` para volver al comportamiento estable previo.
+- Las acciones de AppBar de `Session` vuelven a depender solo de pestaña principal `Session` (sin depender de sub-tab interna).
+- Archivos actualizados:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+  - `lib/features/dashboard/presentation/pages/dashboard_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - Sessions UX: segmented fuera de tarjeta y AppBar contextual
+
+- Reubicado el `SegmentedButton` (`Start` / `My Sessions`) fuera de la tarjeta principal, arriba del todo de la pantalla.
+- Ajustado comportamiento de acciones en AppBar para `Session`:
+  - `+` y menu `Eliminar` solo aparecen cuando la subpestana activa es `Start`.
+  - en `My Sessions` se ocultan esas acciones al no aplicar a ese placeholder.
+- Archivos actualizados:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+  - `lib/features/dashboard/presentation/pages/dashboard_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - Sessions UX: etiqueta de segmento renombrada
+
+- Renombrada etiqueta del segmento de `Start` a `Start Session` para mayor claridad.
+- Archivo actualizado:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - Sessions UX: alta de dispositivo en dialogo centrado
+
+- Sustituido el menu inferior de `Añadir dispositivo` por un dialogo centrado de configuracion.
+- El nuevo flujo permite configurar desde el centro de pantalla:
+  - tipo de dispositivo,
+  - nombre del dispositivo,
+  - accion `Vincular`.
+- Archivo actualizado:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - Sessions UX: ampliar tipos en selector (esqueleto fase 3)
+
+- Anadidos tipos de dispositivo en el desplegable de alta:
+  - `Smartwatch`
+  - `Personalizado`
+- Se mantiene enfoque de esqueleto/mock para fase actual; integracion real prevista para fase 3.
+- Archivo actualizado:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - Sessions UX: control core centrado y CTA principal ampliado
+
+- Reforzada la tarjeta `Control de sesion` para destacar el flujo core de la pantalla.
+- Cambios visuales:
+  - contenido centrado,
+  - titulo y estado mas grandes,
+  - chips centrados y con iconos mas visibles,
+  - boton principal en ancho completo y mayor altura para maxima visibilidad.
+- Archivo actualizado:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - My Sessions: navegacion a detalle de sesion
+
+- Anadida apertura de pantalla de detalle al pulsar una sesion del feed en `My Sessions`.
+- Nueva pantalla `SessionDetailPage` con informacion base de la sesion seleccionada:
+  - titulo,
+  - fecha/hora,
+  - dispositivo,
+  - duracion,
+  - resumen,
+  - bloque placeholder de metricas avanzadas.
+- Archivos actualizados:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+  - `lib/features/sessions/presentation/pages/session_detail_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).

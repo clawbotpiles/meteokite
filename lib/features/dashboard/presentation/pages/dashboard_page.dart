@@ -13,11 +13,24 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   int _selectedIndex = 0;
+  bool _isSessionStartTab = true;
   final GlobalKey<SpotsPageState> _spotsKey = GlobalKey<SpotsPageState>();
+  final GlobalKey<SessionsPageState> _sessionsKey =
+      GlobalKey<SessionsPageState>();
 
   List<Widget> get _pages => [
     SpotsPage(key: _spotsKey),
-    const SessionsPage(),
+    SessionsPage(
+      key: _sessionsKey,
+      onStartTabChanged: (isStart) {
+        if (!mounted || _isSessionStartTab == isStart) {
+          return;
+        }
+        setState(() {
+          _isSessionStartTab = isStart;
+        });
+      },
+    ),
     const CommunityPage(),
     const ProfilePage(),
   ];
@@ -33,6 +46,19 @@ class _DashboardPageState extends State<DashboardPage> {
         state.editSpotFromToolbar();
       case _SpotsToolbarAction.delete:
         state.deleteMultipleSpotsFromToolbar();
+    }
+  }
+
+  Future<void> _handleSessionsToolbarAction(
+    _SessionsToolbarAction action,
+  ) async {
+    final state = _sessionsKey.currentState;
+    if (state == null) {
+      return;
+    }
+    switch (action) {
+      case _SessionsToolbarAction.delete:
+        await state.deleteSelectedDeviceFromToolbar();
     }
   }
 
@@ -55,7 +81,25 @@ class _DashboardPageState extends State<DashboardPage> {
                   child: Text('Eliminar'),
                 ),
               ],
+            )
+          else if (_selectedIndex == 1 && _isSessionStartTab) ...[
+            IconButton(
+              tooltip: 'Añadir dispositivo',
+              onPressed: () {
+                _sessionsKey.currentState?.addDeviceFromToolbar();
+              },
+              icon: const Icon(Icons.add_rounded),
             ),
+            PopupMenuButton<_SessionsToolbarAction>(
+              onSelected: _handleSessionsToolbarAction,
+              itemBuilder: (context) => const [
+                PopupMenuItem(
+                  value: _SessionsToolbarAction.delete,
+                  child: Text('Eliminar'),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
       body: SafeArea(
@@ -96,3 +140,5 @@ class _DashboardPageState extends State<DashboardPage> {
 }
 
 enum _SpotsToolbarAction { edit, delete }
+
+enum _SessionsToolbarAction { delete }
