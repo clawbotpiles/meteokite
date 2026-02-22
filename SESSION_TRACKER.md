@@ -691,3 +691,91 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
 - Objetivo: dejar claro que Hot Reload solo aparece en sesion `Debug`.
 - Archivo actualizado:
   - `.vscode/launch.json`
+
+### 2026-02-22 - Spot detalle Social: mini red social por spot
+
+- Sustituido el placeholder de `Social` por una version simple y util, sin apps externas.
+- Flujo implementado en el propio spot:
+  - publicacion de texto por usuario,
+  - seleccion de tipo de media asociado al post (`Solo texto`, `Foto`, `Video corto`),
+  - feed aislado por spot seleccionado (cada spot tiene su propio hilo),
+  - respuestas en hilo por post (mini foro dentro del feed del spot).
+- Incluye estado vacio cuando no hay publicaciones y seed inicial para spots no custom.
+- Archivo actualizado:
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - Spot detalle Social: simplificacion de adjuntos en composer
+
+- Eliminados los chips de seleccion (`Solo texto`, `Foto`, `Video corto`) del formulario social.
+- Sustituidos por un unico boton `Adjuntar foto/video`, con selector modal para:
+  - adjuntar foto,
+  - adjuntar video corto,
+  - quitar adjunto.
+- Se muestra estado compacto del adjunto activo junto al boton.
+- Archivo actualizado:
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - Spot detalle Social: publicaciones sin chips y gestion de post propio
+
+- Ajustada la UX del feed social para parecerse a una red social clasica:
+  - eliminados chips de tipo (`solo texto`, `foto`, `video`) en los posts publicados,
+  - cuando hay adjunto se muestra bloque de media y el texto del post debajo.
+- Anadido control sobre publicaciones propias (`Tu perfil`):
+  - editar post,
+  - eliminar post.
+- El composer ahora soporta modo edicion con `Guardar cambios` y `Cancelar edicion`.
+- Archivo actualizado:
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - Spot detalle Social: endurecimiento ante errores de indices
+
+- Anadidas validaciones defensivas en acciones de social para evitar `RangeError` por indices fuera de rango al editar, eliminar o responder.
+- Se limpian estados de edicion/respuesta cuando el indice ya no es valido.
+- Archivo actualizado:
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - Spot detalle Social: respuestas en cascada tipo red social
+
+- Extendida la logica de respuestas para permitir hilos en cascada (reply sobre reply), no solo respuesta al post raiz.
+- Cada mensaje/respuesta puede recibir respuestas de otros usuarios y se renderiza como arbol de conversacion.
+- Composer de respuesta unificado para post raiz o reply objetivo, con cancelacion y envio en contexto.
+- Se mantiene feed por spot y acciones de edicion/eliminacion del post propio.
+- Archivo actualizado:
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - Hotfix Social: excepcion en replies (linea 1452)
+
+- Corregida inicializacion de listas de respuestas para evitar estados no mutables/incompatibles en tiempo de ejecucion.
+- En `_SpotSocialPost` y `_SpotSocialReply` ahora se clona siempre la lista de replies con `List.from(...)`.
+- Archivo actualizado:
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - Recuperacion parcial tras rollback accidental en Spot Detail
+
+- Restaurada la seccion `Webcam` dentro de `SpotDetailPage`:
+  - lista de webcams por spot,
+  - estado vacio para spots sin camaras,
+  - boton `Abrir` con navegacion a `WebcamPlayerPage`.
+- Ajustes de social mantenidos compatibles tras la recuperacion.
+- Archivo actualizado:
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-22 - Restauracion de Live completo tras rollback
+
+- Repuesto el bloque avanzado de `Live` en `SpotDetailPage`:
+  - historico grande con zoom/pan,
+  - comparativa con forecast (fuente + modelo),
+  - refresco manual y fullscreen,
+  - rango temporal `1h/3h/6h/12h`,
+  - marcadores de direccion con semaforo en el chart.
+- Restaurado tambien el bloque de `Alarmas personalizadas` como tarjeta separada bajo el historico.
+- Archivos actualizados:
+  - `lib/features/spots/presentation/pages/spot_detail_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
