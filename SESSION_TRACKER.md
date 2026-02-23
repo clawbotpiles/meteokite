@@ -11,6 +11,7 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
 - Producto: Product Manager, UX Researcher
 - Diseno: UX/UI Lead outdoor sports, Design Systems Architect, UI Systems Engineer, Accessibility Specialist
 - Competicion: Game Systems Designer
+- Kitesurf Performance & Competition Expert: Rider con +30 años de experiencia real en Freeride, Freestyle y Big Air, compitiendo a nivel internacional y navegando en spots de referencia mundial (condiciones onshore, side-on, offshore, térmicos, frentes, viento racheado, mar de fondo y choppy extremo). Experto en lectura avanzada de viento, análisis de ráfagas, gradientes térmicos, interacción viento-ola-corriente, selección óptima de material (kite, líneas, tabla, trims), gestión de riesgo, toma de decisiones bajo presión y optimización del rendimiento según nivel del rider. Capaz de traducir datos meteorológicos crudos en decisiones tácticas reales de navegación y competición.
 - Open source: Open Source Governance Advisor, Community Lead
 - Seguridad y escalabilidad: Security Engineer, Cloud and Backend Strategist
 
@@ -1075,5 +1076,186 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
   - bloque placeholder de metricas avanzadas.
 - Archivos actualizados:
   - `lib/features/sessions/presentation/pages/sessions_page.dart`
+  - `lib/features/sessions/presentation/pages/session_detail_page.dart`
+- Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-23 - Session detail: metricas mock + timeline + eventos
+
+- Evolucionada `SessionDetailPage` para reemplazar el bloque de `Metricas (placeholder)` por contenido util de detalle.
+- Nuevo bloque `Metricas de la sesion` con KPIs visuales:
+  - `Distancia`
+  - `Velocidad max`
+  - `Tiempo en planeo`
+  - `Bateria`
+  - `Saltos`
+- Anadida seccion `Timeline de rendimiento` con grafica custom (`CustomPainter`) y clave de test `session_timeline_chart`.
+- Anadida seccion `Eventos detectados` con lista de eventos de sesion.
+- Implementada generacion determinista de datos mock en `SessionDetailPage` a partir de datos base de la sesion (titulo, dispositivo, fecha, duracion) para mantener consistencia visual entre ejecuciones.
+- Tests nuevos:
+  - `test/features/sessions/presentation/pages/session_detail_page_test.dart`
+- Archivos actualizados:
+  - `lib/features/sessions/presentation/pages/session_detail_page.dart`
+  - `test/features/sessions/presentation/pages/session_detail_page_test.dart`
+- Verificacion ejecutada: `flutter test test/features/sessions/presentation/pages/session_detail_page_test.dart -r compact && flutter analyze && flutter test -r compact` (ok).
+
+### 2026-02-23 - Sessions: metricas conectadas al feed + modalidad + altura de saltos
+
+- Aplicado paso de continuidad solicitado: `SessionDetailPage` ya no calcula metricas localmente al abrirse desde datos sueltos.
+- Ahora las metricas se generan al crear/subir la sesion en `SessionsPage` y viajan dentro del modelo de `My Sessions` hasta el detalle (`SessionInsightData`).
+- Flujo de subida mejorado con selector de modalidad en dialogo `Configurar sesion`:
+  - `Freeride`
+  - `Freestyle`
+  - `Big Air`
+- En `My Sessions` cada tarjeta muestra tambien la modalidad junto al dispositivo y fecha.
+- En `SessionDetailPage` se anade chip de modalidad y nuevo KPI clave para Big Air:
+  - `Salto mas alto` (m)
+- Ajuste de logica mock por modalidad:
+  - rango de altura de salto mayor en `Big Air`,
+  - rango intermedio en `Freestyle`,
+  - rango base en `Freeride`,
+  - catalogo de eventos contextual segun modalidad.
+- Archivos actualizados:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+  - `lib/features/sessions/presentation/pages/session_detail_page.dart`
+  - `test/features/sessions/presentation/pages/session_detail_page_test.dart`
+- Verificacion ejecutada: `flutter test test/features/sessions/presentation/pages/session_detail_page_test.dart -r compact && flutter analyze && flutter test -r compact` (ok).
+
+### 2026-02-23 - Sessions: KPIs completos por capacidades de sensor (sin selector de modalidad)
+
+- Ajuste de producto aplicado: se elimina la seleccion manual de modalidad al subir sesion.
+- El dialogo `Configurar sesion` vuelve a centrarse en:
+  - `Spot`
+  - `Resumen de sesion`
+- Se implementa modelo de datos de detalle orientado a sensores (`SessionInsightData`) para registrar/mostrar KPIs segun capacidades reales del dispositivo.
+- `My Sessions` crea y guarda `insights` al subir sesion, derivando capacidades desde tipo de dispositivo (`kind`) vinculado.
+- `SessionDetailPage` se reorganiza en bloques para mostrar los KPIs solicitados de forma completa y estructurada:
+  - Core Session
+  - Big Air
+  - Freestyle
+  - Freeride/Navegacion
+  - Saltos
+  - Control tecnico
+  - Condiciones meteo-contexto
+  - Seguridad y riesgo
+  - Dispositivo y calidad de datos
+  - Social/Competicion
+  - KPIs compuestos
+- Cada KPI se muestra con valor cuando el sensor lo soporta; si no, aparece como `No disponible en este dispositivo`.
+- Se mantiene KPI destacado `Salto mas alto` en el resumen principal de metricas.
+- Se mantiene `Timeline de rendimiento` solo cuando hay datos de velocidad disponibles.
+- Archivos actualizados:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+  - `lib/features/sessions/presentation/pages/session_detail_page.dart`
+  - `test/features/sessions/presentation/pages/session_detail_page_test.dart`
+  - `SESSION_TRACKER.md`
+
+### 2026-02-23 - Sessions: panel de capacidades de dispositivo en Start Session
+
+- Implementado siguiente paso UX en `Start Session`: panel `Capacidades del dispositivo` para el wearable seleccionado.
+- El panel muestra:
+  - ratio de sensores disponibles (`X/9`),
+  - chips por capacidad (`GPS`, `Velocidad`, `Movimiento`, `Altitud`, `Ritmo cardiaco`, `Barometro`, `Bateria`, `Conectividad`, `Meteo`),
+  - estado visual disponible/no disponible para cada capacidad.
+- El contenido se actualiza al cambiar de dispositivo en la lista vinculada.
+- Se reutiliza y expone el mapeo de capacidades desde `SessionInsightData` para mantener una unica fuente de verdad.
+- Test nuevo para validar comportamiento:
+  - `test/features/sessions/presentation/pages/sessions_page_test.dart`
+- Archivos actualizados:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+  - `lib/features/sessions/presentation/pages/session_detail_page.dart`
+  - `test/features/sessions/presentation/pages/sessions_page_test.dart`
+- Verificacion ejecutada: `flutter test test/features/sessions/presentation/pages/sessions_page_test.dart -r compact && flutter analyze && flutter test -r compact` (ok).
+
+### 2026-02-23 - Sessions: incluir telefono como dispositivo seleccionable por defecto
+
+- Anadido `Telefono del usuario` a la lista inicial de dispositivos vinculados para evitar bloqueo de grabacion cuando no hay wearable externo.
+- El telefono queda disponible como fuente valida de captura igual que el resto de dispositivos seleccionables.
+- Test anadido para asegurar presencia del telefono en la lista de dispositivos.
+- Archivos actualizados:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+  - `test/features/sessions/presentation/pages/sessions_page_test.dart`
+- Verificacion ejecutada: `flutter test test/features/sessions/presentation/pages/sessions_page_test.dart -r compact && flutter analyze && flutter test -r compact` (ok).
+
+### 2026-02-23 - Sessions: telefono siempre visible y re-seleccionable
+
+- Corregido el flujo para que el `Telefono del usuario` permanezca siempre disponible en la lista de dispositivos.
+- El telefono ahora se prioriza visualmente al inicio de la lista para facilitar volver a seleccionarlo tras usar un wearable externo.
+- Se bloquea su eliminacion para evitar quedarse sin opcion local de captura.
+- Se anade prueba para validar que el telefono aparece en lista y queda por encima de otros dispositivos.
+- Archivos actualizados:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+  - `test/features/sessions/presentation/pages/sessions_page_test.dart`
+- Verificacion ejecutada: `flutter test test/features/sessions/presentation/pages/sessions_page_test.dart -r compact && flutter analyze && flutter test -r compact` (ok).
+
+### 2026-02-23 - Sessions: auto-seleccion de telefono cuando no hay dispositivo activo
+
+- Anadida logica de fallback para seleccionar automaticamente `Telefono del usuario` cuando no exista dispositivo seleccionado valido.
+- El fallback se ejecuta al iniciar la pantalla y tambien tras eliminar el dispositivo activo.
+- Si no existiera telefono por algun estado inconsistente, se conserva fallback al primer dispositivo disponible o `null` si la lista esta vacia.
+- Archivo actualizado:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+- Verificacion ejecutada: `flutter analyze && flutter test test/features/sessions/presentation/pages/sessions_page_test.dart -r compact` (ok).
+
+### 2026-02-23 - Session detail UX: foco en saltos + historico detallado
+
+- Redisenada la parte principal del detalle para priorizar los KPIs que realmente se consultan al terminar sesion:
+  - `Salto mas alto`
+  - `Saltos`
+  - `Hangtime maximo`
+  - `Duracion sesion`
+  - `Velocidad max`
+- Eliminados KPIs del bloque `Social / Competicion` segun preferencia de producto.
+- Anadida seccion `Historico de saltos` con filas por salto mostrando:
+  - numero de salto,
+  - altura,
+  - hangtime,
+  - velocidad de caida,
+  - minuto y segundo exacto del salto.
+- Anadido modelo `SessionJumpRecord` y generacion determinista de historico de saltos para sesiones mock.
+- Se mantiene timeline y eventos, pero con jerarquia visual orientada al resumen post-sesion.
+- Archivos actualizados:
+  - `lib/features/sessions/presentation/pages/session_detail_page.dart`
+  - `test/features/sessions/presentation/pages/session_detail_page_test.dart`
+- Verificacion ejecutada: `flutter test test/features/sessions/presentation/pages/session_detail_page_test.dart -r compact && flutter analyze && flutter test -r compact` (ok).
+
+### 2026-02-23 - Integracion inicial de historico de saltos desde import de archivo
+
+- Implementada primera conexion del historico de saltos a una ruta de datos tipo sensor en el flujo `Importar sesion`.
+- `Importar sesion` ya no muestra solo aviso: ahora crea una sesion en `My Sessions` con:
+  - metadatos de sesion importada,
+  - historico de saltos estructurado (`SessionJumpRecord`),
+  - recalculo de KPIs clave de salto en detalle (`jumpsCount`, `maxJumpHeightMeters`, `maxHangtimeSeconds`) a partir de los registros importados.
+- Anadido `copyWith` en `SessionInsightData` para permitir sobreescritura de KPIs desde payload importado sin romper el resto de metricas.
+- Anadido test de flujo para validar importacion y navegacion a detalle con presencia de `Historico de saltos`.
+- Archivos actualizados:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+  - `lib/features/sessions/presentation/pages/session_detail_page.dart`
+  - `test/features/sessions/presentation/pages/sessions_page_test.dart`
+- Verificacion ejecutada: `flutter test test/features/sessions/presentation/pages/sessions_page_test.dart -r compact && flutter analyze && flutter test -r compact` (ok).
+
+### 2026-02-23 - Session detail: selector de mediciones para evitar scroll excesivo
+
+- Reintroducida la informacion avanzada de KPIs debajo de `Eventos detectados`, pero con UX de seleccion para no alargar excesivamente la pantalla.
+- `SessionDetailPage` pasa a `StatefulWidget` y anade bloque `Mediciones avanzadas` con `ChoiceChip` por familia de metricas.
+- Solo se muestra en detalle la familia elegida por el usuario (p.ej. `Core Session`, `Big Air`, `Freestyle`, etc.), manteniendo acceso a todas las mediciones disponibles sin saturar la vista.
+- Se mantiene eliminado el bloque `Social / Competicion` segun decision previa.
+- Archivos actualizados:
+  - `lib/features/sessions/presentation/pages/session_detail_page.dart`
+  - `test/features/sessions/presentation/pages/session_detail_page_test.dart`
+- Verificacion ejecutada: `flutter test test/features/sessions/presentation/pages/session_detail_page_test.dart -r compact && flutter analyze && flutter test -r compact` (ok).
+
+### 2026-02-23 - Session detail: ajustes de labels de KPIs para mejor comprension
+
+- Revision y mejora de labels de KPIs para que sean mas intuitivos para el usuario:
+  - `Velocidad p95` -> `Top velocidad estable`
+  - `Hangtime p95` -> `Top hangtime estable`
+  - `Progreso por trick (+X% vs 30d)` -> `Mejora ultimos 30 dias: +X%`
+  - `Consistencia de alturas` -> `Variacion de alturas`
+  - `VMG upwind` -> `Velocidad efectiva upwind`
+  - `VMG downwind` -> `Velocidad efectiva downwind`
+  - `Distribucion de alturas` -> formato en 2 lineas: `Tipica: Xm` / `Maxima habitual: Xm`
+  - `Landing speed` -> `Fuerza G al aterrizar` (en G en lugar de kt)
+  - `Calidad de jibe` -> `Calidad del giro downwind`
+- Archivo actualizado:
   - `lib/features/sessions/presentation/pages/session_detail_page.dart`
 - Verificacion ejecutada: `flutter analyze` (ok).

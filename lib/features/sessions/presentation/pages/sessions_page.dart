@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:meteokitev2_0/core/theme/app_spacing.dart';
@@ -14,6 +15,8 @@ class SessionsPage extends StatefulWidget {
 }
 
 class SessionsPageState extends State<SessionsPage> {
+  static const String _phoneDeviceId = 'phone-1';
+
   final List<_LinkedDevice> _devices = [
     const _LinkedDevice(
       id: 'woo-1',
@@ -29,6 +32,13 @@ class SessionsPageState extends State<SessionsPage> {
       status: 'Listo',
       lastSync: 'hace 22 min',
     ),
+    const _LinkedDevice(
+      id: _phoneDeviceId,
+      name: 'Telefono del usuario',
+      kind: 'Dispositivo Android',
+      status: 'Listo',
+      lastSync: 'hace 2 min',
+    ),
   ];
 
   String? _selectedDeviceId = 'woo-1';
@@ -42,6 +52,13 @@ class SessionsPageState extends State<SessionsPage> {
   _SessionCaptureState _captureState = _SessionCaptureState.ready;
   DateTime? _recordingStartedAt;
   Timer? _recordingTicker;
+
+  @override
+  void initState() {
+    super.initState();
+    _ensurePhoneDeviceAvailable();
+    _ensureSelectedDevice();
+  }
 
   @override
   void dispose() {
@@ -93,6 +110,17 @@ class SessionsPageState extends State<SessionsPage> {
   }
 
   Future<void> _removeDevice(_LinkedDevice device) async {
+    if (device.id == _phoneDeviceId) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'El telefono del usuario siempre debe estar disponible.',
+          ),
+        ),
+      );
+      return;
+    }
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) {
@@ -120,12 +148,50 @@ class SessionsPageState extends State<SessionsPage> {
     setState(() {
       _devices.removeWhere((d) => d.id == device.id);
       if (_selectedDeviceId == device.id) {
-        _selectedDeviceId = _devices.isEmpty ? null : _devices.first.id;
+        _selectedDeviceId = _devices.any((d) => d.id == _phoneDeviceId)
+            ? _phoneDeviceId
+            : (_devices.isEmpty ? null : _devices.first.id);
       }
       if (_sessionFilterDevice == device.name) {
         _sessionFilterDevice = 'Todos';
       }
     });
+  }
+
+  void _ensurePhoneDeviceAvailable() {
+    final exists = _devices.any((device) => device.id == _phoneDeviceId);
+    if (exists) {
+      return;
+    }
+    _devices.add(
+      const _LinkedDevice(
+        id: _phoneDeviceId,
+        name: 'Telefono del usuario',
+        kind: 'Dispositivo Android',
+        status: 'Listo',
+        lastSync: 'hace 2 min',
+      ),
+    );
+  }
+
+  void _ensureSelectedDevice() {
+    final exists = _devices.any((device) => device.id == _selectedDeviceId);
+    if (exists) {
+      return;
+    }
+    _selectedDeviceId = _devices.any((d) => d.id == _phoneDeviceId)
+        ? _phoneDeviceId
+        : (_devices.isEmpty ? null : _devices.first.id);
+  }
+
+  List<_LinkedDevice> _devicesForDisplay() {
+    final devices = List<_LinkedDevice>.from(_devices);
+    devices.sort((a, b) {
+      if (a.id == _phoneDeviceId) return -1;
+      if (b.id == _phoneDeviceId) return 1;
+      return 0;
+    });
+    return devices;
   }
 
   Future<void> deleteSelectedDeviceFromToolbar() async {
@@ -252,20 +318,111 @@ class SessionsPageState extends State<SessionsPage> {
   }
 
   void _importSessionFile() {
+    final device = _selectedDevice ?? _devices.first;
+    final imported = _mockParseImportedSession(device);
+    final baseInsights = SessionInsightData.fromSession(
+      title: imported.title,
+      deviceName: device.name,
+      deviceKind: device.kind,
+      endedAt: imported.endedAt,
+      durationLabel: _formatDuration(imported.duration),
+    );
+    final highestJump = imported.jumpHistory
+        .map((jump) => jump.heightMeters)
+        .fold<double?>(null, (prev, h) => prev == null ? h : math.max(prev, h));
+    final highestHangtime = imported.jumpHistory
+        .map((jump) => jump.hangtimeSeconds)
+        .fold<double?>(null, (prev, t) => prev == null ? t : math.max(prev, t));
+
+    final importedInsights = baseInsights.copyWith(
+      jumpsCount: imported.jumpHistory.length,
+      maxJumpHeightMeters: highestJump,
+      maxHangtimeSeconds: highestHangtime,
+      jumpHistory: imported.jumpHistory,
+      events: [
+        ...baseInsights.events,
+        'Sesion importada desde archivo ${imported.fileExtension}',
+      ],
+    );
+
     setState(() {
-      _selectedDeviceId = null;
       _lastImportHint =
-          'Importacion preparada desde archivo .fit/.gpx (fase mock)';
+          'Sesion importada desde ${imported.fileName} (${imported.fileExtension}).';
       _captureState = _SessionCaptureState.ready;
       _recordingStartedAt = null;
       _recordingTicker?.cancel();
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Importaremos la sesion desde archivo en la siguiente fase.',
+      _sessionFeed.insert(
+        0,
+        _RecordedSession(
+          title: imported.title,
+          deviceName: device.name,
+          endedAt: imported.endedAt,
+          duration: imported.duration,
+          summary: imported.summary,
+          insights: importedInsights,
         ),
-      ),
+      );
+      _sessionTab = _SessionTab.mySessions;
+    });
+
+    if (Scaffold.maybeOf(context) != null) {
+      final messenger = ScaffoldMessenger.maybeOf(context);
+      messenger?.showSnackBar(
+        SnackBar(
+          content: Text(
+            'Sesion importada con ${imported.jumpHistory.length} saltos detectados.',
+          ),
+        ),
+      );
+    }
+  }
+
+  _ImportedSessionResult _mockParseImportedSession(_LinkedDevice device) {
+    final endedAt = DateTime.now().subtract(const Duration(minutes: 9));
+    final duration = const Duration(minutes: 73, seconds: 18);
+    const jumpMoments = [
+      182,
+      268,
+      377,
+      491,
+      614,
+      743,
+      877,
+      1023,
+      1162,
+      1299,
+      1448,
+      1611,
+    ];
+
+    final jumpHistory = List<SessionJumpRecord>.generate(jumpMoments.length, (
+      index,
+    ) {
+      final second = jumpMoments[index];
+      final minuteLabel =
+          '${(second ~/ 60).toString().padLeft(2, '0')}:${(second % 60).toString().padLeft(2, '0')}';
+      final height = 4.1 + (index * 0.52) + ((index % 3) * 0.35);
+      final hangtime = 2.4 + (index * 0.16) + ((index % 2) * 0.14);
+      final fall = 5.4 + (index * 0.19);
+
+      return SessionJumpRecord(
+        jumpNumber: index + 1,
+        heightMeters: height,
+        hangtimeSeconds: hangtime,
+        fallSpeedMetersPerSecond: fall,
+        timeLabel: minuteLabel,
+      );
+    });
+
+    return _ImportedSessionResult(
+      title: 'Sesion importada en Oliva Norte',
+      fileName: 'olive-bigair-track.fit',
+      fileExtension: '.fit',
+      endedAt: endedAt,
+      duration: duration,
+      summary:
+          'Importada desde archivo del dispositivo ${device.name}. Datos de saltos y telemetria sincronizados.',
+      jumpHistory: jumpHistory,
     );
   }
 
@@ -276,6 +433,14 @@ class SessionsPageState extends State<SessionsPage> {
       }
     }
     return null;
+  }
+
+  Set<String> _selectedDeviceCapabilities() {
+    final selected = _selectedDevice;
+    if (selected == null) {
+      return const <String>{};
+    }
+    return SessionInsightData.capabilitiesForDeviceKind(selected.kind);
   }
 
   String _captureButtonLabel() {
@@ -387,14 +552,10 @@ class SessionsPageState extends State<SessionsPage> {
             : endedAt.difference(_recordingStartedAt!);
         _sessionFeed.insert(
           0,
-          _RecordedSession(
-            title: 'Sesion en ${config.spot}',
-            deviceName: _selectedDevice?.name ?? 'Desconocido',
+          _buildRecordedSession(
+            config: config,
             endedAt: endedAt,
             duration: duration,
-            summary: config.notes.isEmpty
-                ? 'Track sincronizado con sensores de velocidad, GPS y eventos.'
-                : config.notes,
           ),
         );
         _captureState = _SessionCaptureState.synced;
@@ -408,6 +569,34 @@ class SessionsPageState extends State<SessionsPage> {
         _recordingStartedAt = null;
       });
     }
+  }
+
+  _RecordedSession _buildRecordedSession({
+    required ({String spot, String notes}) config,
+    required DateTime endedAt,
+    required Duration duration,
+  }) {
+    final title = 'Sesion en ${config.spot}';
+    final selectedDevice = _selectedDevice;
+    final deviceName = selectedDevice?.name ?? 'Desconocido';
+    final deviceKind = selectedDevice?.kind ?? 'Personalizado';
+
+    return _RecordedSession(
+      title: title,
+      deviceName: deviceName,
+      endedAt: endedAt,
+      duration: duration,
+      summary: config.notes.isEmpty
+          ? 'Track sincronizado con sensores de velocidad, GPS y eventos.'
+          : config.notes,
+      insights: SessionInsightData.fromSession(
+        title: title,
+        deviceName: deviceName,
+        deviceKind: deviceKind,
+        endedAt: endedAt,
+        durationLabel: _formatDuration(duration),
+      ),
+    );
   }
 
   List<_RecordedSession> _filteredSessions() {
@@ -595,7 +784,7 @@ class SessionsPageState extends State<SessionsPage> {
                         ),
                       )
                     else
-                      ..._devices.map(
+                      ..._devicesForDisplay().map(
                         (device) => Card(
                           margin: const EdgeInsets.only(bottom: AppSpacing.xs),
                           child: Padding(
@@ -660,6 +849,70 @@ class SessionsPageState extends State<SessionsPage> {
                           ),
                         ),
                       ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Card(
+                      margin: EdgeInsets.zero,
+                      child: Padding(
+                        padding: const EdgeInsets.all(AppSpacing.md),
+                        child: Builder(
+                          builder: (context) {
+                            final capabilities = _selectedDeviceCapabilities();
+                            final total =
+                                SessionInsightData.capabilityOrder.length;
+                            final available = capabilities.length;
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Capacidades del dispositivo',
+                                  style: textTheme.titleMedium,
+                                ),
+                                const SizedBox(height: AppSpacing.xs),
+                                Text(
+                                  '$available/$total sensores disponibles',
+                                  style: textTheme.bodySmall,
+                                ),
+                                const SizedBox(height: AppSpacing.xs),
+                                Text(
+                                  'Los KPI se habilitan automaticamente segun los sensores disponibles.',
+                                  style: textTheme.bodySmall,
+                                ),
+                                const SizedBox(height: AppSpacing.xs),
+                                Wrap(
+                                  spacing: AppSpacing.xs,
+                                  runSpacing: AppSpacing.xs,
+                                  children: SessionInsightData.capabilityOrder
+                                      .map((key) {
+                                        final isAvailable = capabilities
+                                            .contains(key);
+                                        final label =
+                                            SessionInsightData
+                                                .capabilityLabels[key] ??
+                                            key;
+                                        return Chip(
+                                          avatar: Icon(
+                                            isAvailable
+                                                ? Icons.check_circle_rounded
+                                                : Icons.cancel_outlined,
+                                            size: 16,
+                                            color: isAvailable
+                                                ? const Color(0xFF2E7D32)
+                                                : null,
+                                          ),
+                                          label: Text(label),
+                                          backgroundColor: isAvailable
+                                              ? const Color(0x1F2E7D32)
+                                              : null,
+                                        );
+                                      })
+                                      .toList(),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: AppSpacing.sm),
                     Card(
                       margin: EdgeInsets.zero,
@@ -889,6 +1142,7 @@ class SessionsPageState extends State<SessionsPage> {
                                       session.duration,
                                     ),
                                     summary: session.summary,
+                                    insights: session.insights,
                                   ),
                                 ),
                               );
@@ -915,6 +1169,26 @@ class SessionsPageState extends State<SessionsPage> {
   }
 }
 
+class _ImportedSessionResult {
+  const _ImportedSessionResult({
+    required this.title,
+    required this.fileName,
+    required this.fileExtension,
+    required this.endedAt,
+    required this.duration,
+    required this.summary,
+    required this.jumpHistory,
+  });
+
+  final String title;
+  final String fileName;
+  final String fileExtension;
+  final DateTime endedAt;
+  final Duration duration;
+  final String summary;
+  final List<SessionJumpRecord> jumpHistory;
+}
+
 class _RecordedSession {
   const _RecordedSession({
     required this.title,
@@ -922,6 +1196,7 @@ class _RecordedSession {
     required this.endedAt,
     required this.duration,
     required this.summary,
+    required this.insights,
   });
 
   final String title;
@@ -929,6 +1204,7 @@ class _RecordedSession {
   final DateTime endedAt;
   final Duration duration;
   final String summary;
+  final SessionInsightData insights;
 }
 
 class _LinkedDevice {
