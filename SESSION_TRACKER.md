@@ -1259,3 +1259,304 @@ Actuo como cofundador tecnico y estrategico con estos roles activos:
 - Archivo actualizado:
   - `lib/features/sessions/presentation/pages/session_detail_page.dart`
 - Verificacion ejecutada: `flutter analyze` (ok).
+
+### 2026-02-24 - Community UI: implementacion visible en rama principal
+
+- Integrada en la rama actual la implementacion completa de `Community` que estaba en worktree aislado.
+- Estructura final de `Community`:
+  - `SegmentedButton` con tabs `Leaderboard` y `Following`.
+  - Estado independiente por vista para filtros/busqueda.
+- `Leaderboard` implementado con UX tipo Woo:
+  - filtros `Periodo`, `Spot`, `Scope`, `Orden`.
+  - filas con `#`, avatar, `@usuario`, `Big Air Score` y `salto mas alto`.
+  - realce de podio para top 3 (oro/plata/bronce) y fila hero para #1.
+  - acciones por usuario: `Ver perfil`, `Ver sesiones`.
+- `Following` implementado con:
+  - buscador de usuarios (lupa),
+  - descubrimiento con accion `Seguir`,
+  - feed de sesiones de seguidos,
+  - acciones `Mensaje`, `Ver perfil`, `Ver sesiones`.
+- Navegacion placeholder creada para fase UI-first:
+  - `lib/features/community/presentation/pages/community_user_profile_page.dart`
+  - `lib/features/community/presentation/pages/community_user_sessions_page.dart`
+  - `lib/features/community/presentation/pages/community_messages_page.dart`
+- Test widget anadido para cobertura de Community:
+  - `test/features/community/presentation/pages/community_page_test.dart`
+- Archivos actualizados:
+  - `lib/features/community/presentation/pages/community_page.dart`
+  - `SESSION_TRACKER.md`
+- Verificacion ejecutada:
+  - `flutter test test/features/community/presentation/pages/community_page_test.dart -r compact` (ok)
+  - `flutter analyze && flutter test -r compact` (ok)
+
+### 2026-02-24 - Community UI: desactivado efecto muelle en scroll
+
+- Eliminado el efecto muelle/estiramiento al llegar al inicio o final del scroll en `Community`.
+- Aplicado `ScrollConfiguration` con comportamiento sin indicador de overscroll y fisica `ClampingScrollPhysics`.
+- Archivo actualizado:
+  - `lib/features/community/presentation/pages/community_page.dart`
+- Verificacion ejecutada:
+  - `flutter test test/features/community/presentation/pages/community_page_test.dart -r compact` (ok)
+  - `flutter analyze` (ok)
+
+### 2026-02-24 - Community UI: boton explicito para aplicar filtros en Leaderboard
+
+- Anadido boton `Aplicar filtros` en la cabecera de `Leaderboard`.
+- Ajustado comportamiento de filtros a modo borrador/aplicado:
+  - los cambios en dropdowns (`Periodo`, `Spot`, `Scope`, `Orden`) no impactan ranking hasta pulsar el boton,
+  - el boton se desactiva cuando no hay cambios pendientes.
+- Archivos actualizados:
+  - `lib/features/community/presentation/pages/community_page.dart`
+  - `test/features/community/presentation/pages/community_page_test.dart`
+- Verificacion ejecutada:
+  - `flutter test test/features/community/presentation/pages/community_page_test.dart -r compact` (ok)
+  - `flutter analyze` (ok)
+
+### 2026-02-24 - Community Leaderboard: top 5 en tarjetas + tabla desde #6 + carga incremental
+
+- Redisenado `Leaderboard` para ajustar jerarquia visual tipo Woo Sports:
+  - posiciones `#1` a `#5` en formato tarjeta,
+  - desde `#6` en adelante en fila compacta tipo tabla de una celda (ranking, miniavatar, nombre, salto mas alto).
+- Anadida carga progresiva de usuarios en bloques de `50`:
+  - el listado carga inicialmente 50,
+  - al acercarse al final se cargan automaticamente 50 adicionales hasta completar resultados filtrados.
+- Anadida barra fija inferior en `Leaderboard` con posicion personal:
+  - muestra `Mi posicion actual: #X / total participantes`,
+  - permanece visible mientras se navega por la lista.
+- Mantenido flujo de filtros con boton `Aplicar filtros` y reseteo de paginado tras aplicar.
+- Ajuste de datos mock para soportar volumen de ranking (lista extensa de usuarios determinista).
+- Archivos actualizados:
+  - `lib/features/community/presentation/pages/community_page.dart`
+  - `test/features/community/presentation/pages/community_page_test.dart`
+- Verificacion ejecutada:
+  - `flutter test test/features/community/presentation/pages/community_page_test.dart -r compact` (ok)
+  - `flutter analyze` (ok)
+
+### 2026-02-24 - Community Leaderboard: ejemplos explicitos hasta top 10
+
+- Anadidos perfiles mock adicionales en ranking para que se visualice claramente el top 10 completo sin depender solo de usuarios generados.
+- Nuevos ejemplos visibles tras `you_rider`:
+  - `javi_foil`, `lucia_jump`, `kike_wave`, `nora_loop`.
+- Archivo actualizado:
+  - `lib/features/community/presentation/pages/community_page.dart`
+- Verificacion ejecutada:
+  - `flutter test test/features/community/presentation/pages/community_page_test.dart -r compact` (ok)
+  - `flutter analyze` (ok)
+
+### 2026-02-24 - Community Leaderboard: barra inferior simplificada con datos de usuario
+
+- Ajustada la barra fija inferior para eliminar el texto `Mi posicion actual`.
+- Nuevo formato visible:
+  - numero de ranking,
+  - miniavatar,
+  - nombre de usuario,
+  - `#X / total participantes`.
+- Aplicado layout adaptable para evitar overflow en anchos estrechos.
+- Archivo actualizado:
+  - `lib/features/community/presentation/pages/community_page.dart`
+- Verificacion ejecutada:
+  - `flutter test test/features/community/presentation/pages/community_page_test.dart -r compact` (ok)
+  - `flutter analyze` (ok)
+
+### 2026-02-24 - Community Leaderboard: mas altura util visible de listado
+
+- Mejorado el alto util del ranking para que se vean mas posiciones de un vistazo:
+  - filtros colapsables (`Mostrar filtros` / `Ocultar filtros`) para liberar espacio vertical,
+  - reducida altura de tarjetas top 5,
+  - reducida altura de filas compactas desde #6.
+- Ajustado layout de acciones de filtros con `Wrap` para evitar overflow en pantallas estrechas.
+- Archivo actualizado:
+  - `lib/features/community/presentation/pages/community_page.dart`
+  - `test/features/community/presentation/pages/community_page_test.dart`
+- Verificacion ejecutada:
+  - `flutter test test/features/community/presentation/pages/community_page_test.dart -r compact` (ok)
+
+### 2026-02-24 - Community Leaderboard: top 5 con mismo formato visual que filas compactas
+
+- Ajustado formato de las tarjetas del top 5 para que coincidan con la estructura de filas compactas:
+  - numero de ranking,
+  - miniavatar,
+  - nombre de usuario,
+  - metrica seleccionada en filtros.
+- Eliminado en top 5:
+  - bloque lateral `Big Air + score`,
+  - texto inferior `Salto mas alto` bajo el nombre.
+- La metrica mostrada en todas las filas (top 5 y resto) ahora sigue el filtro `Orden`:
+  - `Big Air Score` -> score,
+  - `Salto mas alto` -> altura en metros.
+- Archivo actualizado:
+  - `lib/features/community/presentation/pages/community_page.dart`
+- Verificacion ejecutada:
+  - `flutter test test/features/community/presentation/pages/community_page_test.dart -r compact` (ok)
+  - `flutter analyze` (ok)
+
+### 2026-02-24 - Community Leaderboard: unidades y cabecera dinamica por metrica
+
+- Anadidas unidades/simbolo de medida en la columna de metrica del ranking:
+  - `Big Air Score` muestra ahora `pts`,
+  - `Salto mas alto` muestra `m`.
+- El texto bajo controles de filtros ya no es fijo:
+  - cambia dinamicamente a `Big Air Score (pts)` o `Salto mas alto (m)` segun el filtro `Orden` aplicado.
+- Test widget anadido para validar el cambio dinamico de cabecera al aplicar `Salto mas alto`.
+- Archivos actualizados:
+  - `lib/features/community/presentation/pages/community_page.dart`
+  - `test/features/community/presentation/pages/community_page_test.dart`
+- Verificacion ejecutada:
+  - `flutter test test/features/community/presentation/pages/community_page_test.dart -r compact` (ok)
+  - `flutter analyze` (ok)
+
+### 2026-02-24 - Community Leaderboard: filtro de orden ampliado a todos los KPI
+
+- Ampliado el filtro `Orden` para permitir ranking por todos los KPI de la vista:
+  - `Big Air Score`, `Salto mas alto`, `Numero de saltos`, `Hangtime max`, `Velocidad max`, `Viento medio`, `Distancia sesion`, `Duracion sesion`, `Consistencia de saltos`, `Velocidad upwind`, `Velocidad downwind`.
+- El ranking ahora ordena dinamicamente por la metrica seleccionada en filtros.
+- Unidades y formato de valor ajustados por KPI (pts, m, kt, km, min, %, count).
+- La cabecera del bloque de ranking muestra automaticamente la metrica activa y su unidad.
+- Archivo actualizado:
+  - `lib/features/community/presentation/pages/community_page.dart`
+- Verificacion ejecutada:
+  - `flutter test test/features/community/presentation/pages/community_page_test.dart -r compact` (ok)
+  - `flutter analyze` (ok)
+
+### 2026-02-24 - Community Leaderboard: orden por todos los KPI sincronizados con agrupacion en dropdown
+
+- Rehecho el filtro `Orden` para cubrir los KPI sincronizados de sesion, con esta prioridad inicial:
+  - `Salto mas alto` (default),
+  - `Big Air score`,
+  - `Numero de saltos`.
+- A continuacion del top inicial se muestra una linea separadora y luego los KPI agrupados por familia (Core Session, Big Air, Freestyle, Freeride/Navegacion, Saltos, Control tecnico, Condiciones meteo-contexto, Seguridad y riesgo, Dispositivo y calidad de datos, KPIs compuestos).
+- En el desplegable:
+  - cabeceras de grupo no seleccionables,
+  - separador visual no seleccionable,
+  - parametros de KPI seleccionables debajo de cada grupo.
+- La cabecera y los valores del ranking se actualizan segun el KPI activo con unidad/formato correspondiente.
+- Archivos actualizados:
+  - `lib/features/community/presentation/pages/community_page.dart`
+  - `test/features/community/presentation/pages/community_page_test.dart`
+- Verificacion ejecutada:
+  - `flutter test test/features/community/presentation/pages/community_page_test.dart -r compact` (ok)
+  - `flutter analyze` (ok)
+
+### 2026-02-24 - Community Leaderboard: colores por familia en desplegable de KPI
+
+- Anadido color de fondo distinto por familia de KPI en el desplegable `Orden` para hacer mas visible la separacion visual entre bloques.
+- Se mantiene:
+  - separador entre los 3 KPI principales y el resto,
+  - cabeceras de grupo no seleccionables,
+  - KPI seleccionables bajo cada familia.
+- Los items KPI heredan un tono suave del color de su grupo para reforzar jerarquia visual.
+- Archivo actualizado:
+  - `lib/features/community/presentation/pages/community_page.dart`
+- Verificacion ejecutada:
+  - `flutter test test/features/community/presentation/pages/community_page_test.dart -r compact` (ok)
+  - `flutter analyze` (ok)
+
+### 2026-02-24 - Community Leaderboard: color uniforme por grupo + cabecera mas intensa
+
+- Ajuste visual del dropdown `Orden`:
+  - cada KPI de una misma familia usa ahora exactamente el mismo color de fondo de su grupo,
+  - la cabecera de cada familia usa una variante mas intensa del mismo color para resaltar el bloque.
+- Objetivo UX: hacer mas legible la jerarquia por familias y distinguir claramente inicio de cada grupo.
+- Archivo actualizado:
+  - `lib/features/community/presentation/pages/community_page.dart`
+- Verificacion ejecutada:
+  - `flutter test test/features/community/presentation/pages/community_page_test.dart -r compact` (ok)
+  - `flutter analyze` (ok)
+
+### 2026-02-24 - Community: renombrado tab Following a Amigos
+
+- Renombrada la pestaña social de `Following` a `Amigos`.
+- Ajustado texto de seccion en feed a `Sesiones de amigos`.
+- Actualizados tests de widget para reflejar el nuevo naming.
+- Archivos actualizados:
+  - `lib/features/community/presentation/pages/community_page.dart`
+  - `test/features/community/presentation/pages/community_page_test.dart`
+- Verificacion ejecutada:
+  - `flutter test test/features/community/presentation/pages/community_page_test.dart -r compact` (ok)
+  - `flutter analyze` (ok)
+
+### 2026-02-24 - Community Amigos: reemplazo de descubrir usuarios por directorio de amigos
+
+- Eliminado bloque `Descubrir usuarios` del tab `Amigos`.
+- Nuevo bloque principal `Usuarios que sigues`:
+  - muestra numero de amigos seguidos,
+  - al pulsar abre un directorio/listado de amigos.
+- Directorio de amigos implementado en modal:
+  - buscador para filtrar entre amigos,
+  - listado de amigos con acceso directo a `Ver perfil`,
+  - boton `Cerrar` para salida explicita.
+- Se mantiene feed de `Sesiones de amigos` y acciones de sesion (`Mensaje`, `Ver perfil`, `Ver sesiones`).
+- Archivos actualizados:
+  - `lib/features/community/presentation/pages/community_page.dart`
+  - `test/features/community/presentation/pages/community_page_test.dart`
+- Verificacion ejecutada:
+  - `flutter test test/features/community/presentation/pages/community_page_test.dart -r compact` (ok)
+  - `flutter analyze` (ok)
+
+### 2026-02-24 - Community Amigos: tarjetas de vista previa de sesiones enriquecidas
+
+- Redisenadas las cards de `Sesiones de amigos` para mostrar informacion social y de sesion completa.
+- Cada tarjeta ahora incluye:
+  - preview visual de sesion (foto si el usuario la ha subido, o placeholder de mapa del spot en su defecto),
+  - miniavatar y nombre de usuario,
+  - spot de la sesion,
+  - salto mas alto,
+  - distancia recorrida,
+  - duracion de sesion,
+  - equipo utilizado (marcado como placeholder para fase 2),
+  - bloque de interaccion social con likes, boton de like y boton de comentar.
+- Se mantienen accesos rapidos existentes a `Mensaje`, `Ver perfil` y `Ver sesiones`.
+- Archivo actualizado:
+  - `lib/features/community/presentation/pages/community_page.dart`
+- Verificacion ejecutada:
+  - `flutter test test/features/community/presentation/pages/community_page_test.dart -r compact` (ok)
+  - `flutter analyze` (ok)
+
+### 2026-02-24 - Community Amigos: acceso a detalle de sesion desde la tarjeta
+
+- Eliminados botones de accion en la tarjeta de sesion (`Mensaje`, `Ver perfil`, `Ver sesiones`) segun feedback de UX.
+- La tarjeta completa de sesion ahora es clicable y abre directamente el detalle de sesion.
+- El detalle se abre reutilizando `SessionDetailPage` para mantener el mismo formato visual que el resto de la app.
+- Se han anadido campos de fecha real en el modelo de preview para alimentar la navegacion a detalle.
+- Archivos actualizados:
+  - `lib/features/community/presentation/pages/community_page.dart`
+  - `test/features/community/presentation/pages/community_page_test.dart`
+- Verificacion ejecutada:
+  - `flutter test test/features/community/presentation/pages/community_page_test.dart -r compact` (ok)
+  - `flutter analyze` (ok)
+
+### 2026-02-24 - Session Detail: resumen sustituido por media de sesion
+
+- Sustituida la tarjeta de texto `Resumen` en `Detalle de sesion` por una tarjeta visual de media de sesion.
+- Nuevo comportamiento en detalle:
+  - si la sesion tiene foto elegida por el usuario, se muestra bloque visual de foto,
+  - si no hay foto, se muestra fallback de mapa del spot,
+  - soporte de etiqueta opcional de origen de media (camara/galeria/mapa fallback).
+- Archivo actualizado:
+  - `lib/features/sessions/presentation/pages/session_detail_page.dart`
+
+### 2026-02-24 - Upload Session dialog: opciones camara/galeria + fallback mapa
+
+- Anadidas opciones en el dialogo `Configurar sesion` para seleccionar fuente de media:
+  - `Hacer foto`
+  - `Galeria`
+  - `Mapa del spot` (fallback)
+- Al subir sesion se persiste el tipo de media en el registro de sesion para reflejarlo en detalle.
+- Actualizado modelo `_RecordedSession` con:
+  - `hasSessionPhoto`
+  - `sessionMediaLabel`
+- Archivo actualizado:
+  - `lib/features/sessions/presentation/pages/sessions_page.dart`
+
+### 2026-02-24 - Community Amigos: tap en tarjeta abre detalle con media de sesion
+
+- Ajustada apertura de detalle desde cards de `Sesiones de amigos` para pasar info de media y mostrar detalle consistente con `SessionDetailPage`.
+- Archivo actualizado:
+  - `lib/features/community/presentation/pages/community_page.dart`
+  - `test/features/community/presentation/pages/community_page_test.dart`
+
+- Verificacion ejecutada:
+  - `flutter test test/features/sessions/presentation/pages/session_detail_page_test.dart -r compact` (ok)
+  - `flutter test test/features/sessions/presentation/pages/sessions_page_test.dart -r compact` (ok)
+  - `flutter test test/features/community/presentation/pages/community_page_test.dart -r compact` (ok)
+  - `flutter analyze` (ok)

@@ -359,6 +359,8 @@ class SessionsPageState extends State<SessionsPage> {
           endedAt: imported.endedAt,
           duration: imported.duration,
           summary: imported.summary,
+          hasSessionPhoto: false,
+          sessionMediaLabel: 'Pantallazo del mapa del spot',
           insights: importedInsights,
         ),
       );
@@ -572,7 +574,12 @@ class SessionsPageState extends State<SessionsPage> {
   }
 
   _RecordedSession _buildRecordedSession({
-    required ({String spot, String notes}) config,
+    required ({
+      String spot,
+      String notes,
+      _SessionMediaSelection mediaSelection,
+    })
+    config,
     required DateTime endedAt,
     required Duration duration,
   }) {
@@ -589,6 +596,12 @@ class SessionsPageState extends State<SessionsPage> {
       summary: config.notes.isEmpty
           ? 'Track sincronizado con sensores de velocidad, GPS y eventos.'
           : config.notes,
+      hasSessionPhoto: config.mediaSelection != _SessionMediaSelection.none,
+      sessionMediaLabel: switch (config.mediaSelection) {
+        _SessionMediaSelection.none => 'Pantallazo del mapa del spot',
+        _SessionMediaSelection.camera => 'Foto tomada con camara',
+        _SessionMediaSelection.gallery => 'Foto elegida de galeria',
+      },
       insights: SessionInsightData.fromSession(
         title: title,
         deviceName: deviceName,
@@ -629,84 +642,139 @@ class SessionsPageState extends State<SessionsPage> {
     return '$m:$s';
   }
 
-  Future<({String spot, String notes})?> _showUploadSessionDialog() async {
+  Future<({String spot, String notes, _SessionMediaSelection mediaSelection})?>
+  _showUploadSessionDialog() async {
     String spot = 'Oliva Norte';
     String notes = '';
+    _SessionMediaSelection mediaSelection = _SessionMediaSelection.none;
 
     if (!mounted) {
       return null;
     }
 
-    final result = await showDialog<({String spot, String notes})>(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('Configurar sesion'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  DropdownButtonFormField<String>(
-                    initialValue: spot,
-                    decoration: const InputDecoration(
-                      labelText: 'Spot',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'Oliva Norte',
-                        child: Text('Oliva Norte'),
+    final result =
+        await showDialog<
+          ({String spot, String notes, _SessionMediaSelection mediaSelection})
+        >(
+          context: context,
+          builder: (context) {
+            return StatefulBuilder(
+              builder: (context, setDialogState) {
+                return AlertDialog(
+                  title: const Text('Configurar sesion'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      DropdownButtonFormField<String>(
+                        initialValue: spot,
+                        decoration: const InputDecoration(
+                          labelText: 'Spot',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'Oliva Norte',
+                            child: Text('Oliva Norte'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Gandia Harbor',
+                            child: Text('Gandia Harbor'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Cullera Beach',
+                            child: Text('Cullera Beach'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setDialogState(() {
+                            spot = value;
+                          });
+                        },
                       ),
-                      DropdownMenuItem(
-                        value: 'Gandia Harbor',
-                        child: Text('Gandia Harbor'),
+                      const SizedBox(height: AppSpacing.sm),
+                      TextField(
+                        minLines: 2,
+                        maxLines: 3,
+                        decoration: const InputDecoration(
+                          labelText: 'Resumen de sesion (opcional)',
+                          border: OutlineInputBorder(),
+                        ),
+                        onChanged: (value) {
+                          notes = value;
+                        },
                       ),
-                      DropdownMenuItem(
-                        value: 'Cullera Beach',
-                        child: Text('Cullera Beach'),
+                      const SizedBox(height: AppSpacing.sm),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(AppSpacing.sm),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHighest,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Imagen de sesion'),
+                            const SizedBox(height: AppSpacing.xs),
+                            Wrap(
+                              spacing: AppSpacing.xs,
+                              runSpacing: AppSpacing.xs,
+                              children: [
+                                ChoiceChip(
+                                  label: const Text('Hacer foto'),
+                                  selected:
+                                      mediaSelection ==
+                                      _SessionMediaSelection.camera,
+                                  onSelected: (_) {
+                                    setDialogState(() {
+                                      mediaSelection =
+                                          _SessionMediaSelection.camera;
+                                    });
+                                  },
+                                ),
+                                ChoiceChip(
+                                  label: const Text('Galeria'),
+                                  selected:
+                                      mediaSelection ==
+                                      _SessionMediaSelection.gallery,
+                                  onSelected: (_) {
+                                    setDialogState(() {
+                                      mediaSelection =
+                                          _SessionMediaSelection.gallery;
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ],
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setDialogState(() {
-                        spot = value;
-                      });
-                    },
                   ),
-                  const SizedBox(height: AppSpacing.sm),
-                  TextField(
-                    minLines: 2,
-                    maxLines: 3,
-                    decoration: const InputDecoration(
-                      labelText: 'Resumen de sesion (opcional)',
-                      border: OutlineInputBorder(),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Cancelar'),
                     ),
-                    onChanged: (value) {
-                      notes = value;
-                    },
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancelar'),
-                ),
-                FilledButton(
-                  onPressed: () {
-                    Navigator.of(
-                      context,
-                    ).pop((spot: spot, notes: notes.trim()));
-                  },
-                  child: const Text('Subir sesion'),
-                ),
-              ],
+                    FilledButton(
+                      onPressed: () {
+                        Navigator.of(context).pop((
+                          spot: spot,
+                          notes: notes.trim(),
+                          mediaSelection: mediaSelection,
+                        ));
+                      },
+                      child: const Text('Subir sesion'),
+                    ),
+                  ],
+                );
+              },
             );
           },
         );
-      },
-    );
 
     if (result == null) {
       return null;
@@ -1142,6 +1210,9 @@ class SessionsPageState extends State<SessionsPage> {
                                       session.duration,
                                     ),
                                     summary: session.summary,
+                                    hasSessionPhoto: session.hasSessionPhoto,
+                                    sessionMediaLabel:
+                                        session.sessionMediaLabel,
                                     insights: session.insights,
                                   ),
                                 ),
@@ -1196,6 +1267,8 @@ class _RecordedSession {
     required this.endedAt,
     required this.duration,
     required this.summary,
+    required this.hasSessionPhoto,
+    required this.sessionMediaLabel,
     required this.insights,
   });
 
@@ -1204,6 +1277,8 @@ class _RecordedSession {
   final DateTime endedAt;
   final Duration duration;
   final String summary;
+  final bool hasSessionPhoto;
+  final String sessionMediaLabel;
   final SessionInsightData insights;
 }
 
@@ -1236,6 +1311,8 @@ class _LinkedDevice {
 enum _SessionCaptureState { ready, recording, finished, syncing, synced }
 
 enum _SessionTab { start, mySessions }
+
+enum _SessionMediaSelection { none, camera, gallery }
 
 class _NoStretchScrollBehavior extends MaterialScrollBehavior {
   const _NoStretchScrollBehavior();

@@ -11,6 +11,8 @@ class SessionDetailPage extends StatefulWidget {
     required this.endedAt,
     required this.durationLabel,
     required this.summary,
+    this.hasSessionPhoto = false,
+    this.sessionMediaLabel,
     required this.insights,
   });
 
@@ -19,6 +21,8 @@ class SessionDetailPage extends StatefulWidget {
   final DateTime endedAt;
   final String durationLabel;
   final String summary;
+  final bool hasSessionPhoto;
+  final String? sessionMediaLabel;
   final SessionInsightData insights;
 
   @override
@@ -90,9 +94,59 @@ class _SessionDetailPageState extends State<SessionDetailPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Resumen', style: textTheme.titleMedium),
+                    Text('Media de sesion', style: textTheme.titleMedium),
                     const SizedBox(height: AppSpacing.xs),
-                    Text(widget.summary, style: textTheme.bodyMedium),
+                    Container(
+                      width: double.infinity,
+                      height: 170,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        gradient: widget.hasSessionPhoto
+                            ? const LinearGradient(
+                                colors: [Color(0xFF90CAF9), Color(0xFF42A5F5)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              )
+                            : const LinearGradient(
+                                colors: [Color(0xFFC8E6C9), Color(0xFF80CBC4)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                      ),
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              widget.hasSessionPhoto
+                                  ? Icons.photo_camera_back_rounded
+                                  : Icons.map_rounded,
+                              size: 34,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              widget.hasSessionPhoto
+                                  ? 'Foto de la sesion'
+                                  : 'Pantallazo del mapa del spot',
+                              style: textTheme.titleSmall?.copyWith(
+                                color: Colors.white,
+                              ),
+                            ),
+                            if (widget.sessionMediaLabel != null &&
+                                widget.sessionMediaLabel!.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                widget.sessionMediaLabel!,
+                                style: textTheme.bodySmall?.copyWith(
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
